@@ -78,7 +78,7 @@
                     var vNodeClasses = vNode.classes;
                     var classes = attributeValue.split(" ");
                     for (var c = 0, cl = classes.length; c < cl; c++) {
-                        var className = classNames[c];
+                        var className = classes[c];
                         if (className === "") continue;
                         var allowedClass = this._isAllowedClass(className);
                         if (!allowedClass) continue;
@@ -509,7 +509,7 @@
                     var destination = fVDestination[c];
                     var source = this._vNodeToOuterVNode(fVSource[c]);
 
-                    var oldSourceUid = destination.uid;
+                    var oldDestionationUid = destination.uid;
                     var newSourceUid = newSourceUids--;
                     translateOldUidToNew[oldDestionationUid] = newSourceUid;
 
