@@ -1,3 +1,5 @@
+//https://github.com/oliverfoster/DOMDiffer 2016-02-23
+
 // Uses CommonJS, AMD or browser globals to register library
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
