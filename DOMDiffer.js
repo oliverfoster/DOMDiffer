@@ -1,32 +1,18 @@
-// Uses CommonJS, AMD or browser globals to create a jQuery plugin.
-
-(function (factory) {
+// Uses CommonJS, AMD or browser globals to register library
+(function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery'], factory);
+        define(function() {
+            return (root.DOMDiffer = factory());
+        });
     } else if (typeof module === 'object' && module.exports) {
         // Node/CommonJS
-        module.exports = function( root, jQuery ) {
-            if ( jQuery === undefined ) {
-                // require('jQuery') returns a factory that requires window to
-                // build a jQuery instance, we normalize how we use modules
-                // that require this pattern but the window provided is a noop
-                // if it's defined (how jquery works)
-                if ( typeof window !== 'undefined' ) {
-                    jQuery = require('jquery');
-                }
-                else {
-                    jQuery = require('jquery')(root);
-                }
-            }
-            factory(jQuery);
-            return jQuery;
-        };
+        module.exports = factory();
     } else {
         // Browser globals
-        factory(jQuery);
+        this.DOMDiffer = factory();
     }
-}(function ($) {
+}(this, function () {
 
     var trim_regex = /^\s+|\s+$/g;
 
@@ -40,17 +26,25 @@
 
         //turn don node into vnode
         nodeToVNode: function nodeToVNode(DOMNode, options) {
-            options = options || {
-                depth: 0,
-                index: 0,
-                uid: 0,
-                parentUid: -1
-            };
-            if (options.parentUid === -1) {
+
+            if (!options) {
+
+                options = {
+                    depth: 0,
+                    index: 0,
+                    uid: 0,
+                    parentUid: -1
+                };
+
+                //setup regexs etc
                 this._processOptions();
             }
+
+            //capture depth and index from parent
             var depth = options.depth;
             var index = options.index;
+
+            //build vNode
             var vNode = {
                 DOMNode: DOMNode,
                 nodeType: DOMNode.nodeType,
@@ -65,87 +59,102 @@
                 uid: options.uid++,
                 parentUid: options.parentUid
             };
+
+            //build vNode attributes
             var nodeAttribtes = DOMNode.attributes;
             var vNodeAttributes = vNode.attributes;
             for (var i = 0, l = nodeAttribtes.length; i < l; i++) {
                 var attribute = nodeAttribtes.item(i);
-                var allowedAttribute = this._isAllowedAttribute(attribute.name);
+                var attributeName = attribute.name;
+                var attributeValue = attribute.value;
+
+                var allowedAttribute = this._isAllowedAttribute(attributeName);
                 if (!allowedAttribute) continue;
-                if (attribute.name === "class") {
+
+                switch (attributeName) {
+                case "class":
                     var vNodeClasses = vNode.classes;
-                    var classes = attribute.value.split(" ");
+                    var classes = attributeValue.split(" ");
                     for (var c = 0, cl = classes.length; c < cl; c++) {
-                        if (classes[c] === "") continue;
-                        var allowedClass = this._isAllowedClass(classes[c]);
+                        var className = classNames[c];
+                        if (className === "") continue;
+                        var allowedClass = this._isAllowedClass(className);
                         if (!allowedClass) continue;
-                        vNodeClasses[classes[c]] = true;
+                        vNodeClasses[className] = true;
                     }
                     continue;
-                }
-                if (attribute.name === "id") {
-                    vNode.id = attribute.value;
+                case "id":
+                    vNode.id = attributeValue;
                     continue;
                 }
-                vNodeAttributes[attribute.name] = attribute.value;
+
+                vNodeAttributes[attributeName] = attributeValue;
             }
-            var deep = 1;
+
             var allowedSubTree = this._isAllowedSubTree(vNode);
-            if (allowedSubTree) {
-                for (var i = 0, l = DOMNode.childNodes.length; i < l; i++) {
-                    var childNode = DOMNode.childNodes[i];
-                    var vChildNodes = vNode.childNodes;
-                    var childNodeType = childNode.nodeType;
-                    switch (childNodeType) {
-                    case 1:
-                        var childOptions = {
-                            depth: depth+1, 
-                            index: i,
-                            uid: options.uid, // carry current uid count through
-                            parentUid: vNode.uid
-                        };
-                        var vChildNode = this.nodeToVNode(childNode, childOptions);
-                        deep = deep+vChildNode.deep;
-                        options.uid = childOptions.uid;
-                        break;
-                    case 3:
-                        vChildNode = {
-                            DOMNode: childNode,
-                            nodeType: childNodeType,
-                            nodeName: childNode.nodeName,
-                            data: childNode.data,
-                            trimmed: this._trim(childNode.data),
-                            index: i,
-                            depth: depth+1,
-                            deep: 0,
-                            uid: options.uid++,
-                            parentUid: vNode.uid
-                        };
-                        break;
-                    default:
-                        debugger;
-                    }
-                    vChildNodes.push(vChildNode);
+            if (!allowedSubTree) return vNode;
+
+            //capture deep from childNodes
+            var deep = 1;
+
+            for (var i = 0, l = DOMNode.childNodes.length; i < l; i++) {
+                var childNode = DOMNode.childNodes[i];
+                var vChildNodes = vNode.childNodes;
+                var childNodeType = childNode.nodeType;
+                switch (childNodeType) {
+                case 1:
+                    var childOptions = {
+                        depth: depth+1, 
+                        index: i,
+                        uid: options.uid, // carry current uid count through
+                        parentUid: vNode.uid
+                    };
+                    var vChildNode = this.nodeToVNode(childNode, childOptions);
+                    deep = deep+vChildNode.deep;
+                    options.uid = childOptions.uid;
+                    break;
+                case 3:
+                    //add text node
+                    vChildNode = {
+                        DOMNode: childNode,
+                        nodeType: childNodeType,
+                        nodeName: childNode.nodeName,
+                        data: childNode.data,
+                        trimmed: this._trim(childNode.data),
+                        index: i,
+                        depth: depth+1,
+                        deep: 0,
+                        uid: options.uid++,
+                        parentUid: vNode.uid
+                    };
+                    break;
                 }
+                vChildNodes.push(vChildNode);
             }
+
             vNode.deep = deep;
+            
             return vNode;
         },
 
         _processOptions: function _processOptions() {
 
-            if (this.options.ignoreAttributesWithPrefix) {
-                var regex = "";
-                var lastIndex = this.options.ignoreAttributesWithPrefix.length-1;
-                for (var i = 0, l = this.options.ignoreAttributesWithPrefix.length; i < l; i++) {
-                    var prefix = this.options.ignoreAttributesWithPrefix[i];
-                    regex+="^"+this._escapeRegExp(prefix);
-                    if (i !== lastIndex) {
-                        regex+="|";
-                    }
-                }
-                this.options._ignoreAttributesWithPrefixRegExp = new RegExp(regex, "i");
+            var ignoreAttributesWithPrefix = this.options.ignoreAttributesWithPrefix;
+            if (!ignoreAttributesWithPrefix || ignoreAttributesWithPrefix.length === 0) return
 
+            var regex = "";
+            var lastIndex = ignoreAttributesWithPrefix.length-1;
+            for (var i = 0, l = ignoreAttributesWithPrefix.length; i < l; i++) {
+                var prefix = ignoreAttributesWithPrefix[i];
+                regex+="^"+this._escapeRegExp(prefix);
+                if (i !== lastIndex) {
+                    regex+="|";
+                }
             }
+
+            this.options._ignoreAttributesWithPrefixRegExp = new RegExp(regex, "i");
+
+
         },
 
         _escapeRegExp: function _escapeRegExp(str) {
@@ -156,12 +165,13 @@
             //don't stop at root nodes
             if (vNode.parentUid === -1) return true;
 
-            if (!this.options.ignoreSubTreesWithAttributes) return true;
+            var ignoreSubTreesWithAttributes = this.options.ignoreSubTreesWithAttributes;
+            if (!ignoreSubTreesWithAttributes || ignoreSubTreesWithAttributes.length === 0) return true;
 
             //if node has attribute then stop building tree here
             for (var k in vNode.attributes) {
-                for (var i = 0, l = this.options.ignoreSubTreesWithAttributes.length; i < l; i++) {
-                    if (this.options.ignoreSubTreesWithAttributes[i] === k) {
+                for (var i = 0, l = ignoreSubTreesWithAttributes.length; i < l; i++) {
+                    if (ignoreSubTreesWithAttributes[i] === k) {
                         return false;
                     }
                 }
@@ -173,9 +183,10 @@
 
         _isAllowedAttribute: function _isAllowedAttribute(attribute) {
 
-            if (!this.options.ignoreAttributesWithPrefix) return true;
-            //ignore matching attribute names
+            var ignoreAttributesWithPrefix = this.options.ignoreAttributesWithPrefix;
+            if (!ignoreAttributesWithPrefix || ignoreAttributesWithPrefix.length === 0) return true;
 
+            //ignore matching attribute names
             var isMatched = this.options._ignoreAttributesWithPrefixRegExp.test(attribute);
 
             return !isMatched;
@@ -184,11 +195,12 @@
 
         _isAllowedClass: function _isAllowedClass(className) {
 
-            if (!this.options.ignoreClasses) return true;
+            var ignoreClasses = this.options.ignoreClasses;
+            if (!ignoreClasses || ignoreClasses.length === 0) return true;
 
             //ignore matching classes
-            for (var i = 0, l = this.options.ignoreClasses.length; i < l; i++) {
-                var ignoreClass = this.options.ignoreAttributesWithPrefix[i];
+            for (var i = 0, l = ignoreClasses.length; i < l; i++) {
+                var ignoreClass = ignoreClasses[i];
                 if (ignoreClass === className) {
                     return false;
                 }
@@ -216,8 +228,9 @@
             switch (vNode.nodeType) {
             case 1:
                 rtn.push(vNode);
-                for (var i = 0, l = vNode.childNodes.length; i < l; i++) {
-                    this._vNodeToFVNode(vNode.childNodes[i], rtn);
+                var childNodes = vNode.childNodes;
+                for (var i = 0, l = childNodes.length; i < l; i++) {
+                    this._vNodeToFVNode(childNodes[i], rtn);
                 }
                 break;
             case 3:
@@ -245,11 +258,16 @@
 
             //try to match containers
             var sourceMatches = [];
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 1, sourceMatches);
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.80, sourceMatches);
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.60, sourceMatches);
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.40, sourceMatches);
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches);
+
+            var matchIndex = {};
+
+            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 1, sourceMatches, matchIndex);
+            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.80, sourceMatches, matchIndex);
+            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.60, sourceMatches, matchIndex);
+            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.40, sourceMatches, matchIndex);
+            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches, matchIndex);
+
+            matchIndex = undefined;
 
             var removes = this._createRemoveMatches(fVSource2, sourceMatches);
 
@@ -257,10 +275,15 @@
 
             var adds = this._createAddMatches(fVDestination2, sourceMatches, uidIndexes);
 
+            fVSource2 = undefined;
+            fVDestination2 = undefined;
+
             this._expandMatchDifferencesAndStripNodes(sourceMatches, uidIndexes);
 
             var destinationStartVNode = this._fVNodeToVNode(fVDestination);
-            var orderedMatches = this._rebuildDestinationFromSourceMatches(destinationStartVNode, sourceMatches);
+            var orderedMatches = this._rebuildDestinationFromSourceMatches(destinationStartVNode, sourceMatches, uidIndexes);
+
+            sourceMatches = undefined;
 
             var differential = [].concat(
                 removes, //re-add removes as they get lost in the ordering
@@ -282,7 +305,7 @@
 
         //compare each source vnode with each destination vnode
         //when a match is found, remove both the source and destination from their original flattened arrays and add a match diff object
-        _compareAndRemoveFVNodes: function _compareAndRemoveFVNodes(fVSource, fVDestination, minRate, sourceMatches) {
+        _compareAndRemoveFVNodes: function _compareAndRemoveFVNodes(fVSource, fVDestination, minRate, sourceMatches, matchIndex) {
             if (fVSource.length === 0 || fVDestination.length === 0) return;
 
             var fIndex = fVSource.length-1;
@@ -294,7 +317,13 @@
                 var source = fVSource[fIndex];
                 var destination = fVDestination[f2Index];
 
-                var rate = this._rateCompare(destination, source);
+                var sourceUid = source.uid;
+                var destinationUid = destination.uid;
+
+                matchIndex[sourceUid] = matchIndex[sourceUid] || {};
+                matchIndex[sourceUid][destinationUid] = matchIndex[sourceUid][destinationUid] || this._rateCompare(destination, source);
+
+                var rate = matchIndex[sourceUid][destinationUid];
 
                 if (rate > maxRating && rate >= minRate) {
                     maxRated = destination;
@@ -309,7 +338,7 @@
                                 source: source,
                                 destination: destination,
                                 nodeType: source.nodeType,
-                                sourceUid: source.uid,
+                                sourceUid: sourceUid,
                                 sourceParentUid: source.parentUid,
                                 sourceIndex: source.index,
                                 destinationUid: maxRated.uid,
@@ -337,7 +366,7 @@
                             source: source,
                             destination: maxRated,
                             nodeType: source.nodeType,
-                            sourceUid: source.uid,
+                            sourceUid: sourceUid,
                             sourceParentUid: source.parentUid,
                             sourceIndex: source.index,
                             destinationUid: maxRated.uid,
@@ -355,6 +384,7 @@
                 }
 
             }
+
         }, 
 
         //create a percentage difference value for two vnodes
@@ -468,23 +498,26 @@
             var newSourceUids = -1;
             var translateOldUidToNew = {};
             for (var i = 0, l = newDestinationRoots.length; i < l; i++) {
+
                 var fVSource = this._vNodeToFVNode(this._cloneObject(newDestinationRoots[i], {"DOMNode": true})); //clone for new source nodes
                 var fVDestination = this._vNodeToFVNode(newDestinationRoots[i]);
+
                 for (var c = 0, cl = fVDestination.length; c < cl; c++) {
+
                     var destination = fVDestination[c];
                     var source = this._vNodeToOuterVNode(fVSource[c]);
 
                     var oldSourceUid = destination.uid;
                     var newSourceUid = newSourceUids--;
-                    translateOldUidToNew[oldSourceUid] = newSourceUid;
+                    translateOldUidToNew[oldDestionationUid] = newSourceUid;
 
-                    var newSourceParentUid = destination.parentUid;
-                    if (translateOldUidToNew[newSourceParentUid] !== undefined) {
-                        //if no translation to a new uid, assume new node is connected to a preexisting source node
-                        //otherwise we're dealing with a child of a new root
-                        newSourceParentUid = translateOldUidToNew[newSourceParentUid]
-                    } else {
-                        newSourceParentUid = uidIndexes.byDestinationUid[destination.parentUid].sourceUid;
+                    var oldDestinationParentUid = destination.parentUid;
+                    //if we're dealing with a child of a new root
+                    var newSourceParentUid = translateOldUidToNew[oldDestinationParentUid];
+                    if (newSourceParentUid === undefined) {
+                        //if no translation to a new uid, not a child of a new root
+                        //assume new node is connected to a preexisting source node
+                        newSourceParentUid = uidIndexes.byDestinationUid[oldDestinationParentUid].sourceUid;
                     }
 
                     //configure new source nodes
@@ -496,8 +529,8 @@
                         changeAdd: true,
                         destination: destination,
                         nodeType: destination.nodeType,
-                        destinationUid: destination.uid,
-                        destinationParentUid: destination.parentUid,
+                        destinationUid: oldDestionationUid,
+                        destinationParentUid: oldDestinationParentUid,
                         relocateIndex: destination.index,
                         changeIndex: true,
                         source: source,
@@ -510,7 +543,7 @@
                     sourceMatches.push(diffObj);
                     addMatches.push(diffObj);
                     uidIndexes.bySourceUid[newSourceUid] = diffObj;
-                    uidIndexes.byDestinationUid[destination.uid] = diffObj;
+                    uidIndexes.byDestinationUid[oldDestionationUid] = diffObj;
                 }
             }
 
@@ -523,16 +556,19 @@
                 bySourceUid: {},
                 byDestinationUid: {}
             };
+            var bySourceUid = uidIndexes.bySourceUid;
+            var byDestinationUid = uidIndexes.byDestinationUid;
+
             for (var i = 0, l = sourceMatches.length; i < l; i++) {
                 var diff = sourceMatches[i];
                 if (diff.sourceUid !== undefined) {
-                    uidIndexes.bySourceUid[diff.sourceUid] = diff;
+                    bySourceUid[diff.sourceUid] = diff;
                 }
                 if (diff.destinationUid !== undefined) {
-                    uidIndexes.byDestinationUid[diff.destinationUid] = diff;
+                    byDestinationUid[diff.destinationUid] = diff;
                 }
                 if (diff.add) {
-                    diff.sourceParentUid = uidIndexes.byDestinationUid[diff.destination.parentUid].sourceUid;
+                    diff.sourceParentUid = byDestinationUid[diff.destination.parentUid].sourceUid;
                 }
             }
             return uidIndexes;
@@ -650,21 +686,25 @@
         //recursively go through the destination tree, checking each source mapped node (or added node) and outputing the match-diffs where necessary
         //this filters and orders the match-diffs creating a preliminary differential
         _rebuildDestinationFromSourceMatches: function _rebuildDestinationFromSourceMatches(startVNode, sourceMatches, uidIndexes, parentVNode, newIndex) {
-            if (!uidIndexes) {
+            
+            /*if (!uidIndexes) {
                 uidIndexes = {
                     bySourceUid: {},
                     byDestinationUid: {}
                 };
+                var bySourceUid = uidIndexes.bySourceUid;
+                var byDestinationUid = uidIndexes.byDestinationUid;
+
                 for (var i = 0, l = sourceMatches.length; i < l; i++) {
                     var diff = sourceMatches[i];
                     if (diff.sourceUid !== undefined) {
-                        uidIndexes.bySourceUid[diff.sourceUid] = diff;
+                        bySourceUid[diff.sourceUid] = diff;
                     }
                     if (diff.destinationUid !== undefined) {
-                        uidIndexes.byDestinationUid[diff.destinationUid] = diff;
+                        byDestinationUid[diff.destinationUid] = diff;
                     }
                 }
-            };
+            };*/
 
             var diffs = [];
             var diff = uidIndexes.byDestinationUid[startVNode.uid];
@@ -733,7 +773,7 @@
 
             options = options || {
                 cloneSourceVNode: false,
-                performOnDOM: false
+                performOnDOM: true
             };
 
             if (options.cloneSourceVNode) startVNode = this._cloneObject(startVNode, {"DOMNode":true});
@@ -1152,42 +1192,6 @@
 
 
     //export DOMDiffer for use in document
-    window.DOMDiffer = DOMDiffer;
-
-    
-    //make jquery differ
-    $.differ = new DOMDiffer({});   
-
-    //make auto diff + diff apply for jquery
-    $.fn.diffSyncWith = function (stringDOMJQUERY) { 
-
-        var differ = $.differ;
-        var syncWith;
-        if (isDOM(stringDOMJQUERY)) {
-            syncWith = stringDOMJQUERY;        
-        } else {
-            syncWith = $(stringDOMJQUERY)[0];
-        }
-
-        for (var i = 0, l = this.length; i < l; i++) {
-
-            var diff = differ.nodesDiff(this[i], syncWith);
-            differ.nodeDiffApply(this[i], diff);
-
-        }
-
-        return this;
-
-    };
-
-    //skip jquery wrapping
-    function isDOM (obj) {
-        // DOM, Level2
-        if ("HTMLElement" in window) {
-            return (obj && obj instanceof HTMLElement);
-        }
-        // Older browsers
-        return !!(obj && typeof obj === "object" && obj.nodeType === 1 && obj.nodeName);
-    }
+    return DOMDiffer;
 
 }));
