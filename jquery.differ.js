@@ -46,6 +46,9 @@
                 uid: 0,
                 parentUid: -1
             };
+            if (options.parentUid === -1) {
+                this._processOptions();
+            }
             var depth = options.depth;
             var index = options.index;
             var vNode = {
@@ -66,11 +69,16 @@
             var vNodeAttributes = vNode.attributes;
             for (var i = 0, l = nodeAttribtes.length; i < l; i++) {
                 var attribute = nodeAttribtes.item(i);
+                var allowedAttribute = this._isAllowedAttribute(attribute.name);
+                if (!allowedAttribute) continue;
                 if (attribute.name === "class") {
                     var vNodeClasses = vNode.classes;
                     var classes = attribute.value.split(" ");
-                    for (var i = 0, l = classes.length; i < l; i++) {
-                        vNodeClasses[classes[i]] = true;
+                    for (var c = 0, cl = classes.length; c < cl; c++) {
+                        if (classes[c] === "") continue;
+                        var allowedClass = this._isAllowedClass(classes[c]);
+                        if (!allowedClass) continue;
+                        vNodeClasses[classes[c]] = true;
                     }
                     continue;
                 }
@@ -81,41 +89,113 @@
                 vNodeAttributes[attribute.name] = attribute.value;
             }
             var deep = 1;
-            for (var i = 0, l = DOMNode.childNodes.length; i < l; i++) {
-                var childNode = DOMNode.childNodes[i];
-                var vChildNodes = vNode.childNodes;
-                var childNodeType = childNode.nodeType;
-                switch (childNodeType) {
-                case 1:
-                    var childOptions = {
-                        depth: depth+1, 
-                        index: i,
-                        uid: options.uid, // carry current uid count through
-                        parentUid: vNode.uid
-                    };
-                    var vChildNode = this.nodeToVNode(childNode, childOptions);
-                    deep = deep+vChildNode.deep;
-                    options.uid = childOptions.uid;
-                    break;
-                case 3:
-                    vChildNode = {
-                        DOMNode: childNode,
-                        nodeType: childNodeType,
-                        nodeName: childNode.nodeName,
-                        data: childNode.data,
-                        trimmed: this._trim(childNode.data),
-                        index: i,
-                        depth: depth+1,
-                        deep: 0,
-                        uid: options.uid++,
-                        parentUid: vNode.uid
-                    };
-                    break;
+            var allowedSubTree = this._isAllowedSubTree(vNode);
+            if (allowedSubTree) {
+                for (var i = 0, l = DOMNode.childNodes.length; i < l; i++) {
+                    var childNode = DOMNode.childNodes[i];
+                    var vChildNodes = vNode.childNodes;
+                    var childNodeType = childNode.nodeType;
+                    switch (childNodeType) {
+                    case 1:
+                        var childOptions = {
+                            depth: depth+1, 
+                            index: i,
+                            uid: options.uid, // carry current uid count through
+                            parentUid: vNode.uid
+                        };
+                        var vChildNode = this.nodeToVNode(childNode, childOptions);
+                        deep = deep+vChildNode.deep;
+                        options.uid = childOptions.uid;
+                        break;
+                    case 3:
+                        vChildNode = {
+                            DOMNode: childNode,
+                            nodeType: childNodeType,
+                            nodeName: childNode.nodeName,
+                            data: childNode.data,
+                            trimmed: this._trim(childNode.data),
+                            index: i,
+                            depth: depth+1,
+                            deep: 0,
+                            uid: options.uid++,
+                            parentUid: vNode.uid
+                        };
+                        break;
+                    default:
+                        debugger;
+                    }
+                    vChildNodes.push(vChildNode);
                 }
-                vChildNodes.push(vChildNode);
             }
             vNode.deep = deep;
             return vNode;
+        },
+
+        _processOptions: function _processOptions() {
+
+            if (this.options.ignoreAttributesWithPrefix) {
+                var regex = "";
+                var lastIndex = this.options.ignoreAttributesWithPrefix.length-1;
+                for (var i = 0, l = this.options.ignoreAttributesWithPrefix.length; i < l; i++) {
+                    var prefix = this.options.ignoreAttributesWithPrefix[i];
+                    regex+="^"+this._escapeRegExp(prefix);
+                    if (i !== lastIndex) {
+                        regex+="|";
+                    }
+                }
+                this.options._ignoreAttributesWithPrefixRegExp = new RegExp(regex, "i");
+
+            }
+        },
+
+        _escapeRegExp: function _escapeRegExp(str) {
+          return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+        },
+
+        _isAllowedSubTree: function _isAllowedSubTree(vNode) {
+            //don't stop at root nodes
+            if (vNode.parentUid === -1) return true;
+
+            if (!this.options.ignoreSubTreesWithAttributes) return true;
+
+            //if node has attribute then stop building tree here
+            for (var k in vNode.attributes) {
+                for (var i = 0, l = this.options.ignoreSubTreesWithAttributes.length; i < l; i++) {
+                    if (this.options.ignoreSubTreesWithAttributes[i] === k) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+
+        },
+
+        _isAllowedAttribute: function _isAllowedAttribute(attribute) {
+
+            if (!this.options.ignoreAttributesWithPrefix) return true;
+            //ignore matching attribute names
+
+            var isMatched = this.options._ignoreAttributesWithPrefixRegExp.test(attribute);
+
+            return !isMatched;
+
+        },
+
+        _isAllowedClass: function _isAllowedClass(className) {
+
+            if (!this.options.ignoreClasses) return true;
+
+            //ignore matching classes
+            for (var i = 0, l = this.options.ignoreClasses.length; i < l; i++) {
+                var ignoreClass = this.options.ignoreAttributesWithPrefix[i];
+                if (ignoreClass === className) {
+                    return false;
+                }
+            }
+
+            return true;
+
         },
 
         //trim whitespace from a string ends
@@ -172,9 +252,10 @@
             this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches);
 
             var removes = this._createRemoveMatches(fVSource2, sourceMatches);
-            var adds = this._createAddMatches(fVDestination2, sourceMatches);
 
             var uidIndexes = this._makeUidIndexes(sourceMatches);
+
+            var adds = this._createAddMatches(fVDestination2, sourceMatches, uidIndexes);
 
             this._expandMatchDifferencesAndStripNodes(sourceMatches, uidIndexes);
 
@@ -208,7 +289,7 @@
             var f2Index = fVDestination.length-1;
 
             var maxRating = -1, maxRated, maxRatedF2Index, rated = [];
-            while (fIndex >= 0) {
+            while (fIndex >= 0 && (fVSource.length !== 0 && fVDestination.length !== 0)) {
 
                 var source = fVSource[fIndex];
                 var destination = fVDestination[f2Index];
@@ -364,7 +445,7 @@
         },
 
         //manufacture 'matches' for the items to add to the source tree from the destination
-        _createAddMatches: function _createAddMatches(fVDestination2, sourceMatches) {
+        _createAddMatches: function _createAddMatches(fVDestination2, sourceMatches, uidIndexes) {
             if (fVDestination2.length === 0) return;
             //create new source pieces to add by cloning the needed destination pieces
 
@@ -387,8 +468,8 @@
             var newSourceUids = -1;
             var translateOldUidToNew = {};
             for (var i = 0, l = newDestinationRoots.length; i < l; i++) {
-                var fVSource = this._vNodeToFVNode(clone(newDestinationRoots[i], {"DOMNode": true})); //clone for new source nodes
-                var fVDestination = _vNodeToFVNode(newDestinationRoots[i]);
+                var fVSource = this._vNodeToFVNode(this._cloneObject(newDestinationRoots[i], {"DOMNode": true})); //clone for new source nodes
+                var fVDestination = this._vNodeToFVNode(newDestinationRoots[i]);
                 for (var c = 0, cl = fVDestination.length; c < cl; c++) {
                     var destination = fVDestination[c];
                     var source = this._vNodeToOuterVNode(fVSource[c]);
@@ -402,6 +483,8 @@
                         //if no translation to a new uid, assume new node is connected to a preexisting source node
                         //otherwise we're dealing with a child of a new root
                         newSourceParentUid = translateOldUidToNew[newSourceParentUid]
+                    } else {
+                        newSourceParentUid = uidIndexes.byDestinationUid[destination.parentUid].sourceUid;
                     }
 
                     //configure new source nodes
@@ -426,6 +509,8 @@
 
                     sourceMatches.push(diffObj);
                     addMatches.push(diffObj);
+                    uidIndexes.bySourceUid[newSourceUid] = diffObj;
+                    uidIndexes.byDestinationUid[destination.uid] = diffObj;
                 }
             }
 
@@ -467,7 +552,7 @@
         //this makes each match-pair into a match-diff
         _expandDifferences: function _expandDifferences(match, uidIndexes) {
 
-            if (match.equal || match.changeRemove || match.changeAdd) return;
+            if (match.changeRemove || match.changeAdd) return;
 
             var source = match.source;
             var destination = match.destination;
@@ -478,6 +563,12 @@
                 match.changeAttributes = this._diffKeys(source.attributes, destination.attributes);
                 match.changeClasses = this._diffKeys(source.classes, destination.classes);
                 if (source.id !== destination.id) match.changeId = destination.id;
+
+
+                if (match.changeId
+                    || match.changeNodeName
+                    || !match.changeAttributes.isEqual
+                    || !match.changeClasses.isEqual) match.equal = false;
 
                 if (match.destinationParentUid === -1) break;
 
@@ -491,9 +582,15 @@
                     match.changeIndex = true;
                 }
 
+                if (match.changeIndex
+                    || match.changeParent
+                    ) match.equal = false;
+
                 break;
             case 3:
                 if (source.data !== destination.data) match.changeData = destination.data;
+
+                if (match.changeData) match.equal = false;
                 break;
             }
 
@@ -1054,19 +1151,23 @@
     for (var k in proto) DOMDiffer.prototype[k] = proto[k];
 
 
+    //export DOMDiffer for use in document
     window.DOMDiffer = DOMDiffer;
 
-
-
     
-    $.differ = new DOMDiffer({
-        //put in bit to ignore jquery attributes and sizzle etc
-    });   
+    //make jquery differ
+    $.differ = new DOMDiffer({});   
 
+    //make auto diff + diff apply for jquery
     $.fn.diffSyncWith = function (stringDOMJQUERY) { 
 
         var differ = $.differ;
-        var syncWith = $(stringDOMJQUERY)[0];
+        var syncWith;
+        if (isDOM(stringDOMJQUERY)) {
+            syncWith = stringDOMJQUERY;        
+        } else {
+            syncWith = $(stringDOMJQUERY)[0];
+        }
 
         for (var i = 0, l = this.length; i < l; i++) {
 
@@ -1078,5 +1179,15 @@
         return this;
 
     };
+
+    //skip jquery wrapping
+    function isDOM (obj) {
+        // DOM, Level2
+        if ("HTMLElement" in window) {
+            return (obj && obj instanceof HTMLElement);
+        }
+        // Older browsers
+        return !!(obj && typeof obj === "object" && obj.nodeType === 1 && obj.nodeName);
+    }
 
 }));
