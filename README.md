@@ -15,7 +15,7 @@ require(['DOMDiffer'], function(DOMDiffer) {
   var nodeInDocument = document.getElementById("node1");
 
   var diff = ddInstance.nodesDiff( nodeInDocument, renderedTemplate );
-  ddInstance.nodeApplyDiff( document.getElementById("node1"), diff);
+  ddInstance.nodeApplyDiff( nodeInDocument, diff);
   
 
 });
