@@ -26,7 +26,7 @@
             return this.vNodesDiff(vsource, vdestination);
         },
 
-        //turn don node into vnode
+        //turn dom node into vnode
         nodeToVNode: function nodeToVNode(DOMNode, options) {
 
             if (!options) {
@@ -295,10 +295,11 @@
             //find the start node on the original source
             var sourceStartVNode = this._fVNodeToVNode(fVSource);
         
-            //remove redundant differentials by applying the diff
-            //use cloneSourceVNode so as not to change the original source vnode
+            //remove redundant differentials by test-applying the diff
+            //use performOnVNode: false so as not to change the original source vnode
+            //use performOnDOM: false so as not to change the original dom structure
             this.vNodeDiffApply(sourceStartVNode, differential, {
-                cloneSourceVNode: true,
+                performOnVNode: false,
                 performOnDOM: false
             });
 
@@ -390,17 +391,19 @@
         }, 
 
         //create a percentage difference value for two vnodes
-        //20% for matching ids
-        //20% for the same depth
-        //13.3% for matching attributes
-        //13.3% for matching classes
+        //3/16 for matching ids
+        //3/16 for the same depth
 
-        //6.6% for matching nodenames
-        //6.6% if both have children or not
-        //6.6% if number of children is equal
+        //3/16 for matching classes (0-3)
 
-        //6.6% if both have the same number of nodes deep
-        //6.6% if both are at the same index
+        //2/16 for matching attributes (0-2)
+
+        //1/16 for matching nodenames
+        //1/16 if both have children or not
+        //1/16 if number of children is equal
+
+        //1/16 if both have the same number of nodes deep
+        //1/16 if both are at the same index
 
         _rateCompare: function _rateCompare(vdestination, vsource) {
             var value = 0;
@@ -412,9 +415,9 @@
                 
                 value+=vsource.id===vdestination.id?3:0;
                 value+=vsource.depth === vdestination.depth ? 3 : 0;
+                value+=this._keyValueCompare(vsource.classes, vdestination.classes) * 3;
 
                 value+=this._keyValueCompare(vsource.attributes, vdestination.attributes) * 2;
-                value+=this._keyValueCompare(vsource.classes, vdestination.classes) * 2;
 
                 value+=vsource.nodeName === vdestination.nodeName?1:0;
 
@@ -424,7 +427,7 @@
                 value+=vsource.deep === vdestination.deep ? 1 : 0;
                 value+=vsource.index === vdestination.index ? 1 : 0;
 
-                rate = (value / 15) || -1;
+                rate = (value / 16) || -1;
 
                 break;
             case 3:
@@ -507,7 +510,7 @@
                 for (var c = 0, cl = fVDestination.length; c < cl; c++) {
 
                     var destination = fVDestination[c];
-                    var source = this._vNodeToOuterVNode(fVSource[c]);
+                    var source = this.vNodeToOuterVNode(fVSource[c], {performOnVNode: true});
 
                     var oldDestionationUid = destination.uid;
                     var newSourceUid = newSourceUids--;
@@ -774,11 +777,11 @@
         vNodeDiffApply: function vNodeDiffApply(startVNode, differential, options) {
 
             options = options || {
-                cloneSourceVNode: false,
+                performOnVNode: true,
                 performOnDOM: true
             };
 
-            if (options.cloneSourceVNode) startVNode = this._cloneObject(startVNode, {"DOMNode":true});
+            if (!options.performOnVNode) startVNode = this._cloneObject(startVNode, {"DOMNode":true});
 
             var fVStartNode = this._vNodeToFVNode(startVNode);
             var differential2 = this._cloneObject(differential, {"DOMNode":true});
@@ -957,7 +960,8 @@
                         for (var k in vNode.classes) {
                             classNames.push(k);
                         }
-                        newNode.setAttribute('class', classNames.join(" "));
+                        var className = classNames.join(" ");
+                        newNode.setAttribute('class', className);
                         newNode.setAttribute('id', vNode.id);
 
                         //move all the children from old node to new node
@@ -1086,11 +1090,85 @@
             return value;
         },
 
-        _vNodeToOuterVNode: function _vNodeToOuterVNode(vNode) {
+        //clone and strip the children from the vNode
+        vNodeToOuterVNode: function vNodeToOuterVNode(vNode, options) {
+            if (options && !options.performOnVNode) {
+                vNode = this._cloneObject(vNode, { "nodes": true });
+            }
             switch (vNode.nodeType) {
             case 1:
                 vNode.childNodes.length = 0;
             }
+            return vNode;
+        },
+
+        //turn dom node into vnode ignoring children
+        nodeToOuterVNode: function nodeToOuterVNode(DOMNode, options) {
+
+            if (!options) {
+
+                options = {
+                    depth: 0,
+                    index: 0,
+                    uid: 0,
+                    parentUid: -1
+                };
+
+                //setup regexs etc
+                this._processOptions();
+            }
+
+            //capture depth and index from parent
+            var depth = options.depth;
+            var index = options.index;
+
+            //build vNode
+            var vNode = {
+                DOMNode: DOMNode,
+                nodeType: DOMNode.nodeType,
+                nodeName: DOMNode.nodeName,
+                attributes: {},
+                id: false,
+                classes: {},
+                childNodes: [],
+                depth: depth,
+                index: index,
+                deep: 0,
+                uid: options.uid++,
+                parentUid: options.parentUid
+            };
+
+            //build vNode attributes
+            var nodeAttribtes = DOMNode.attributes;
+            var vNodeAttributes = vNode.attributes;
+            for (var i = 0, l = nodeAttribtes.length; i < l; i++) {
+                var attribute = nodeAttribtes.item(i);
+                var attributeName = attribute.name;
+                var attributeValue = attribute.value;
+
+                var allowedAttribute = this._isAllowedAttribute(attributeName);
+                if (!allowedAttribute) continue;
+
+                switch (attributeName) {
+                case "class":
+                    var vNodeClasses = vNode.classes;
+                    var classes = attributeValue.split(" ");
+                    for (var c = 0, cl = classes.length; c < cl; c++) {
+                        var className = classes[c];
+                        if (className === "") continue;
+                        var allowedClass = this._isAllowedClass(className);
+                        if (!allowedClass) continue;
+                        vNodeClasses[className] = true;
+                    }
+                    continue;
+                case "id":
+                    vNode.id = attributeValue;
+                    continue;
+                }
+
+                vNodeAttributes[attributeName] = attributeValue;
+            }
+            
             return vNode;
         },
 
@@ -1133,13 +1211,15 @@
             return DOMNode;
         },
 
-        nodeDiffApply: function nodeDiffApply(DOMNode, differential) {
+        nodeDiffApply: function nodeDiffApply(DOMNode, differential, options) {
             var startVNode = this.nodeToVNode(DOMNode);
 
-            this.vNodeDiffApply(startVNode, differential, {
-                cloneSourceVNode: false,
+            options = options || {
+                performOnVNode: true,
                 performOnDOM: true
-            });
+            };
+
+            this.vNodeDiffApply(startVNode, differential, options);
 
             return startVNode;
         },
