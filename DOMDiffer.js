@@ -20,10 +20,10 @@
 
     var proto = {
         //turn dom nodes into vnodes and diff
-        nodesDiff: function nodesDiff(source, destination) {
+        nodesDiff: function nodesDiff(source, destination, options) {
             var vsource = this.nodeToVNode(source);
             var vdestination = this.nodeToVNode(destination);
-            return this.vNodesDiff(vsource, vdestination);
+            return this.vNodesDiff(vsource, vdestination, options);
         },
 
         //turn dom node into vnode
@@ -171,11 +171,10 @@
             if (!ignoreSubTreesWithAttributes || ignoreSubTreesWithAttributes.length === 0) return true;
 
             //if node has attribute then stop building tree here
-            for (var k in vNode.attributes) {
-                for (var i = 0, l = ignoreSubTreesWithAttributes.length; i < l; i++) {
-                    if (ignoreSubTreesWithAttributes[i] === k) {
-                        return false;
-                    }
+            for (var i = 0, l = ignoreSubTreesWithAttributes.length; i < l; i++) {
+                var attr = ignoreSubTreesWithAttributes[i];
+                if (vNode.attributes.hasOwnProperty(attr)) {
+                    return false;
                 }
             }
 
@@ -218,10 +217,10 @@
         },
 
         //flatten vnodes and diff
-        vNodesDiff: function vNodesDiff(vsource, vdestination) {
+        vNodesDiff: function vNodesDiff(vsource, vdestination, options) {
             var fVSource = this._vNodeToFVNode(vsource);
             var fVDestination = this._vNodeToFVNode(vdestination);
-            return this._fVNodesDiff(fVSource, fVDestination);
+            return this._fVNodesDiff(fVSource, fVDestination, options);
         },
 
         //flatten a vnode
@@ -252,7 +251,11 @@
         //7. rebuild destination tree from source tree using added nodes where necessary and returning the order of the differences
         //8. use the differential to turn a copy of the source tree into the destination tree, removing redundant diffs on the way
         //9. return finished differential
-        _fVNodesDiff: function _fVNodesDiff(fVSource, fVDestination) {
+        _fVNodesDiff: function _fVNodesDiff(fVSource, fVDestination, options) {
+
+            options = options || {
+                diffStyle: "fast"
+            };
 
             //create editable arrays to preserve original arrays
             var fVSource2 = fVSource.slice(0);
@@ -263,11 +266,15 @@
 
             var matchIndex = {};
 
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 1, sourceMatches, matchIndex);
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.80, sourceMatches, matchIndex);
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.60, sourceMatches, matchIndex);
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.40, sourceMatches, matchIndex);
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches, matchIndex);
+            if (options.diffStyle === "slow") {
+                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 1, sourceMatches, matchIndex);
+                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.80, sourceMatches, matchIndex);
+                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.60, sourceMatches, matchIndex);
+                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.40, sourceMatches, matchIndex);
+                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches, matchIndex);
+            } else {
+                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches, matchIndex);
+            }
 
             matchIndex = undefined;
 
@@ -333,7 +340,7 @@
                     maxRating = rate;
                     maxRatedF2Index = f2Index;
                     rated.push(destination);
-                    if (rate >= minRate && minRate >= 0.8) {
+                    if (rate >= minRate && rate >= 0.8) {
                         if (maxRated !== undefined) {
                             fVSource.splice(fIndex, 1);
                             fVDestination.splice(maxRatedF2Index, 1);
@@ -346,7 +353,8 @@
                                 sourceIndex: source.index,
                                 destinationUid: maxRated.uid,
                                 destinationParentUid: maxRated.parentUid,
-                                equal: rate === 1
+                                equal: rate === 1,
+                                rate: rate
                             };
                             sourceMatches.push(diffObj);
                         }
@@ -362,7 +370,7 @@
                 
                 f2Index--;
                 if (f2Index === -1) {
-                    if (maxRated !== undefined) {
+                    if (maxRated !== undefined && maxRating >= minRate) {
                         fVSource.splice(fIndex, 1);
                         fVDestination.splice(maxRatedF2Index, 1);
                         diffObj = {
@@ -374,7 +382,8 @@
                             sourceIndex: source.index,
                             destinationUid: maxRated.uid,
                             destinationParentUid: maxRated.parentUid,
-                            equal: false
+                            equal: false,
+                            rate: maxRating
                         };
                         sourceMatches.push(diffObj);
                     }
