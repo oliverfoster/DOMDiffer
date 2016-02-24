@@ -318,10 +318,32 @@
         _compareAndRemoveFVNodes: function _compareAndRemoveFVNodes(fVSource, fVDestination, minRate, sourceMatches, matchIndex) {
             if (fVSource.length === 0 || fVDestination.length === 0) return;
 
+            //always remove root containers as matches first
+            if (fVSource[0].parentUid === -1 && fVDestination[0].parentUid === -1) {
+                var source = fVSource[0];
+                var destination = fVDestination[0];
+                var rate = this._rateCompare(source, destination);
+                fVSource.splice(0, 1);
+                fVDestination.splice(0, 1);
+                diffObj = {
+                    source: source,
+                    destination: destination,
+                    nodeType: source.nodeType,
+                    sourceUid: source.uid,
+                    sourceParentUid: source.parentUid,
+                    sourceIndex: source.index,
+                    destinationUid: destination.uid,
+                    destinationParentUid: destination.parentUid,
+                    equal: rate === 1,
+                    rate: rate
+                };
+                sourceMatches.push(diffObj);
+            }
+
             var fIndex = fVSource.length-1;
             var f2Index = fVDestination.length-1;
 
-            var maxRating = -1, maxRated, maxRatedF2Index, rated = [];
+            var maxRating = -1, maxRated, maxRatedF2Index;
             while (fIndex >= 0 && (fVSource.length !== 0 && fVDestination.length !== 0)) {
 
                 var source = fVSource[fIndex];
@@ -339,7 +361,6 @@
                     maxRated = destination;
                     maxRating = rate;
                     maxRatedF2Index = f2Index;
-                    rated.push(destination);
                     if (rate >= minRate && rate >= 0.8) {
                         if (maxRated !== undefined) {
                             fVSource.splice(fIndex, 1);
@@ -361,7 +382,6 @@
                         maxRating = 0;
                         maxRated = undefined;
                         maxRatedF2Index = undefined;
-                        rated.length = 0;
                         fIndex--;
                         f2Index = fVDestination.length-1;
                         continue;
@@ -371,6 +391,9 @@
                 f2Index--;
                 if (f2Index === -1) {
                     if (maxRated !== undefined && maxRating >= minRate) {
+                        if (source.parentUid === -1) {
+                            debugger;
+                        }
                         fVSource.splice(fIndex, 1);
                         fVDestination.splice(maxRatedF2Index, 1);
                         diffObj = {
