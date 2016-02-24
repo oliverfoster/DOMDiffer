@@ -993,8 +993,13 @@
                             classNames.push(k);
                         }
                         var className = classNames.join(" ");
-                        newNode.setAttribute('class', className);
-                        newNode.setAttribute('id', vNode.id);
+                        if (className) {
+                            newNode.setAttribute('class', className);
+                        }
+
+                        if (vNode.id) {
+                            newNode.setAttribute('id', vNode.id);
+                        }
 
                         //move all the children from old node to new node
                         this.nodeReplaceChildren(newNode, vNode.DOMNode);
@@ -1033,7 +1038,7 @@
 
                     //add to final source childNode
                     found = false;
-                    if (diff.relocateIndex === newParentVNode.childNodes.length) {
+                    if (newParentVNode.childNodes.length === 0 || diff.relocateIndex >= newParentVNode.childNodes.length) {
 
                         if (options.performOnDOM) {
                             newParentVNode.DOMNode.appendChild(moveNode);
@@ -1069,7 +1074,7 @@
                         parentVNode.childNodes[r].index = r;
                     }
 
-                    if (diff.relocateIndex === vNode.index) {
+                    if (diff.relocateIndex === vNode.index || parentVNode.childNodes.length === 0) {
                         diff.redundant = true;
                     } else {
 
