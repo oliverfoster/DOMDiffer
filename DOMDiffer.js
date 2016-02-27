@@ -1055,7 +1055,7 @@
                         diff.redundant = true;
                     } else {
 
-                        if (diff.relocateDisplace) {
+                        if (diff.relocateDisplace && diff.relocateIndex > vNode.index) {
                             //insert before next, when a node is moved up a list it changes the indices of all the elements above it
                             //it's easier to pick the node after its new position and insert before that one
                             //makes indices come out correctly
