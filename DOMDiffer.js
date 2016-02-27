@@ -263,18 +263,9 @@
 
             //try to match containers
             var sourceMatches = [];
-
             var matchIndex = {};
 
-            if (options.diffStyle === "slow") {
-                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 1, sourceMatches, matchIndex);
-                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.80, sourceMatches, matchIndex);
-                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.60, sourceMatches, matchIndex);
-                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.40, sourceMatches, matchIndex);
-                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches, matchIndex);
-            } else {
-                this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches, matchIndex);
-            }
+            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches, matchIndex);
 
             matchIndex = undefined;
 
@@ -283,8 +274,6 @@
             var uidIndexes = this._makeUidIndexes(sourceMatches);
 
             var adds = this._createAddMatches(fVDestination2, sourceMatches, uidIndexes);
-
-            console.log(adds);
 
             fVSource2 = undefined;
             fVDestination2 = undefined;
@@ -371,7 +360,7 @@
                         maxRated = destination;
                         maxRating = rate;
                         maxRatedIndex = dIndex;
-                        if (rate >= minRate && rate === 1) {
+                        if (rate === 1) {
                             fVSource.splice(sIndex, 1);
                             fVDestination.splice(dIndex, 1);
                             diffObj = {
