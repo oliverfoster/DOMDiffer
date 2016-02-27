@@ -17,8 +17,10 @@
 }(this, function () {
 
     var trim_regex = /^\s+|\s+$/g;
+    var svgNS = "http://www.w3.org/2000/svg";
 
     var proto = {
+
         //turn dom nodes into vnodes and diff
         nodesDiff: function nodesDiff(source, destination, options) {
             var vsource = this.nodeToVNode(source);
@@ -91,6 +93,12 @@
                 }
 
                 vNodeAttributes[attributeName] = attributeValue;
+            }
+
+            switch (vNode.nodeName) {
+            case "svg":
+                if (!vNodeAttributes["xmlns"]) vNodeAttributes["xmlns"] = svgNS;
+                break;
             }
 
             var allowedSubTree = this._isAllowedSubTree(vNode);
@@ -976,22 +984,11 @@
                     if (options.performOnDOM) {
                         //create a new node, add the attributes
                         var parentNode = bySourceUid[diff.sourceParentUid].DOMNode;
-                        var newNode = document.createElement(diff.changeNodeName);
-                        for (var k in vNode.attributes) {
-                            newNode.setAttribute(k, vNode.attributes);
-                        }
-                        var classNames = [];
-                        for (var k in vNode.classes) {
-                            classNames.push(k);
-                        }
-                        var className = classNames.join(" ");
-                        if (className) {
-                            newNode.setAttribute('class', className);
-                        }
 
-                        if (vNode.id) {
-                            newNode.setAttribute('id', vNode.id);
-                        }
+                        var vNodeOuter = this.vNodeToOuterVNode(vNode, {performOnVNode: false});
+                        vNodeOuter.nodeName = diff.changeNodeName;
+
+                        var newNode = this.vNodeToNode(vNodeOuter);
 
                         //move all the children from old node to new node
                         this.nodeReplaceChildren(newNode, vNode.DOMNode);
@@ -1147,7 +1144,7 @@
         //clone and strip the children from the vNode
         vNodeToOuterVNode: function vNodeToOuterVNode(vNode, options) {
             if (options && !options.performOnVNode) {
-                vNode = this._cloneObject(vNode, { "nodes": true });
+                vNode = this._cloneObject(vNode, { "DOMNode": true });
             }
             switch (vNode.nodeType) {
             case 1:
@@ -1232,11 +1229,15 @@
             var DOMNode;
             switch (vNode.nodeType) {
             case 1:
-                DOMNode = document.createElement(vNode.nodeName);
+                switch (vNode.nodeName) {
+                case "svg":
+                    DOMNode = document.createElementNS(svgNS, vNode.nodeName);
+                    break;
+                default:
+                    DOMNode = document.createElement(vNode.nodeName);
+                }
                 for (var k in vNode.attributes) {
-                    var attr = document.createAttribute(k);
-                    attr.value = vNode.attributes[k];
-                    DOMNode.attributes.setNamedItem(attr);
+                    DOMNode.setAttribute(k, vNode.attributes[k]);
                 }
                 var classes = [];
                 for (var k in vNode.classes) {
@@ -1244,14 +1245,10 @@
                 }
                 var className = classes.join(" ");
                 if (className) {
-                    var attr = document.createAttribute("class");
-                    attr.value = className;
-                    DOMNode.attributes.setNamedItem(attr);
+                    DOMNode.setAttribute("class", className);
                 }
                 if (vNode.id) {
-                    var attr = document.createAttribute("id");
-                    attr.value = vNode.id;
-                    DOMNode.attributes.setNamedItem(attr);
+                    DOMNode.setAttribute("id", vNode.id);
                 }
                 for (var i = 0, l = vNode.childNodes.length; i < l; i++) {
                     DOMNode.appendChild( vNodeToNode(vNode.childNodes[i]) );
