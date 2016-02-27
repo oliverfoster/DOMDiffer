@@ -634,15 +634,17 @@
             switch(match.nodeType) {
             case 1:
                 if (source.nodeName !== destination.nodeName) match.changeNodeName = destination.nodeName;
-                match.changeAttributes = this._diffKeys(source.attributes, destination.attributes);
-                match.changeClasses = this._diffKeys(source.classes, destination.classes);
+                var changeAttributes = this._diffKeys(source.attributes, destination.attributes);
+                if (!changeAttributes.isEqual) match.changeAttributes = changeAttributes;
+                var changeClasses = this._diffKeys(source.classes, destination.classes);
+                if (!changeClasses.isEqual) match.changeClasses = changeClasses;
                 if (source.id !== destination.id) match.changeId = destination.id;
 
 
                 if (match.changeId !== undefined
                     || match.changeNodeName !== undefined
-                    || !match.changeAttributes.isEqual
-                    || !match.changeClasses.isEqual) match.equal = false;
+                    || match.changeAttributes
+                    || match.changeClasses) match.equal = false;
 
                 break;
             case 3:
@@ -744,12 +746,13 @@
 
             switch (diff.nodeType) {
             case 1:
+                if (diff.source.nodeName === "INPUT") debugger;
                 if (!diff.equal
                     && (diff.changeAdd
                     || diff.changeId !== undefined
                     || diff.changeNodeName !== undefined
-                    || (diff.changeAttributes && !diff.changeAttributes.isEqual)
-                    || (diff.changeClasses && !diff.changeClasses.isEqual)
+                    || (diff.changeAttributes)
+                    || (diff.changeClasses)
                     || diff.changeParent !== undefined
                     || diff.changeIndex !== undefined
                     )) {
@@ -1052,7 +1055,13 @@
                     }
 
                     if (diff.relocateIndex === vNode.index || parentVNode.childNodes.length === 1) {
-                        diff.redundant = true;
+                        if (!diff.changeAttributes
+                            && !diff.changeClass
+                            && !diff.changeNodeName
+                            && diff.changeData !== undefined) {
+                                //remove diff if only changing index
+                                diff.redundant = true;
+                        }
                     } else {
 
                         if (diff.relocateDisplace && diff.relocateIndex > vNode.index) {
