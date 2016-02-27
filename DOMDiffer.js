@@ -284,6 +284,8 @@
 
             var adds = this._createAddMatches(fVDestination2, sourceMatches, uidIndexes);
 
+            console.log(adds);
+
             fVSource2 = undefined;
             fVDestination2 = undefined;
 
@@ -343,18 +345,21 @@
             var fIndex = fVSource.length-1;
             var f2Index = fVDestination.length-1;
 
-            var maxRating = -1, maxRated, maxRatedSIndex;
+            var maxRating = -1, maxRated, maxRatedIndex;
 
-            var destinationTop = fVDestination.length;
-            for (var dIndex = 0; dIndex < destinationTop; dIndex++) {
+            //match each source piece to the best destination piece
+            //this way the fewest source moves will be made
 
-                var destination = fVDestination[dIndex];
+            var sourceTop = fVSource.length;
+            for (var sIndex = 0; sIndex < sourceTop; sIndex++) {
 
-                for (var sIndex = 0, sLength = fVSource.length; sIndex < sLength; sIndex++) {
+                var source = fVSource[sIndex];
+                var sourceUid = source.uid;
 
-                    var source = fVSource[sIndex];
+                var rated = [];
+                for (var dIndex = 0, dLength = fVDestination.length; dIndex < dLength; dIndex++) {
 
-                    var sourceUid = source.uid;
+                    var destination = fVDestination[dIndex];
                     var destinationUid = destination.uid;
 
                     matchIndex[sourceUid] = matchIndex[sourceUid] || {};
@@ -362,10 +367,11 @@
 
                     var rate = matchIndex[sourceUid][destinationUid];
                     if (rate > maxRating && rate >= minRate) {
-                        maxRated = source;
+                        rated.push(destination);
+                        maxRated = destination;
                         maxRating = rate;
-                        maxRatedSIndex = sIndex;
-                        if (rate >= minRate && rate >= 0.8) {
+                        maxRatedIndex = dIndex;
+                        if (rate >= minRate && rate === 1) {
                             fVSource.splice(sIndex, 1);
                             fVDestination.splice(dIndex, 1);
                             diffObj = {
@@ -383,9 +389,9 @@
                             sourceMatches.push(diffObj);
                             maxRating = 0;
                             maxRated = undefined;
-                            maxRatedSIndex = undefined;
-                            dIndex = 0;
-                            destinationTop--;
+                            maxRatedIndex = undefined;
+                            sIndex = -1;
+                            sourceTop--;
                             break;
                         }
                     }
@@ -393,26 +399,26 @@
                 }
 
                 if (maxRated && maxRating >= minRate) {
-                    fVSource.splice(maxRatedSIndex, 1);
-                    fVDestination.splice(dIndex, 1);
+                    fVSource.splice(sIndex, 1);
+                    fVDestination.splice(maxRatedIndex, 1);
                     diffObj = {
-                        source: maxRated,
-                        destination: destination,
-                        nodeType: maxRated.nodeType,
-                        sourceUid: maxRated.uid,
-                        sourceParentUid: maxRated.parentUid,
-                        sourceIndex: maxRated.index,
-                        destinationUid: destination.uid,
-                        destinationParentUid: destination.parentUid,
+                        source: source,
+                        destination: maxRated,
+                        nodeType: source.nodeType,
+                        sourceUid: source.uid,
+                        sourceParentUid: source.parentUid,
+                        sourceIndex: source.index,
+                        destinationUid: maxRated.uid,
+                        destinationParentUid: maxRated.parentUid,
                         equal: rate === 1,
-                        rate: rate
+                        rate: maxRating
                     };
                     sourceMatches.push(diffObj);
                     maxRating = 0;
                     maxRated = undefined;
-                    maxRatedSIndex = undefined;
-                    dIndex = 0;
-                    destinationTop--;
+                    maxRatedIndex = undefined;
+                    sIndex = -1;
+                    sourceTop--;
                 }
             }
 
