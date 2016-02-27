@@ -1327,6 +1327,9 @@
             ignoreAttributesWithPrefix: [
                 "sizzle",
                 "jquery"
+            ],
+            ignoreSubTreesWithAttributes: [
+                "view-container"
             ]
         };
         this.options = options;
