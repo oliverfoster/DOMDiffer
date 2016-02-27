@@ -640,8 +640,8 @@
             for (var i = 0, l = sourceMatches.length; i < l; i++) {
                 var diff = sourceMatches[i];
                 this._expandDifferences(diff, uidIndexes);
-                //delete diff.source;
-                //delete diff.destination;
+                delete diff.source;
+                delete diff.destination;
             }
         },
 
