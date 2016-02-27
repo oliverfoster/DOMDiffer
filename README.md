@@ -78,8 +78,8 @@ require(['DOMDiffer'], function(DOMDiffer) {
 | ------------------------------------ | --- | --- |
 | ``nodeToVNode(node);`` | ``Object`` | Returns a ``vNode`` object tree representing the dom ``node`` and its children positions in the tree |
 | ``vNodeToNode(node)`` | ``Node`` | The opposite of the above function |
-| ``nodesDiff(node1, node2, options)`` | ``Array`` | Returns an array of objects describing the differences between the ``nodes``. Use ``{diffStyle:"fast"|"slow"}`` for fewer diffs and slower performance or faster performance and potentiall more diffs |
-| ``vNodesDiff(vNode1, vNode2, options)`` | ``Array`` | Returns an array of objects describing the differences between the ``vNodes``. Use ``{diffStyle:"fast"|"slow"}`` for fewer diffs and slower performance or faster performance and potentiall more diffs |
+| ``nodesDiff(node1, node2, options)`` | ``Array`` | Returns an array of objects describing the differences between the ``nodes`` |
+| ``vNodesDiff(vNode1, vNode2, options)`` | ``Array`` | Returns an array of objects describing the differences between the ``vNodes`` |
 | ``nodeDiffApply(node1, diff, options)`` | ``Object`` | Returns the ``vNode`` of ``node1`` with the ``diff`` applied and applies the ``diff`` to ``node1``. Use ```{performOnVNode:true, performOnDOM:true}``` to override behaviour  |
 | ``vNodeDiffApply(vNode1, diff, options)`` | ``Object`` | Returns ``vNode1`` with the diff applied and applies the diff to ``vNode1``'s original parent. Use ```{performOnVNode:true, performOnDOM:true}``` to override behaviour |
 | ``nodesAreEqual(node1, node2)`` | ``boolean`` | Returns ``true`` if ``nodes`` are equal  |
