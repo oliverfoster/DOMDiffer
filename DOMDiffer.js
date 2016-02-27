@@ -584,7 +584,22 @@
                     //configure new source nodes
                     source.uid = newSourceUid;
                     source.parentUid = newSourceParentUid;
-                    source.DOMNode = undefined; //remove destination node from the diff
+                    source.DOMNode = undefined;
+
+                    var vNode = {};
+                    switch (source.nodeType) {
+                    case 1:
+                        vNode.attributes = source.attributes;
+                        vNode.classes = source.classes;
+                        vNode.id = source.id;
+                        vNode.nodeName = source.nodeName;
+                        vNode.nodeType = source.nodeType;
+                        vNode.childNodes = [];
+                        break;
+                    case 3:
+                        vNode.data = source.data;
+                        vNode.nodeType = source.nodeType;
+                    }
 
                     var diffObj = {
                         changeAdd: true,
@@ -595,7 +610,7 @@
                         relocateIndex: destination.index,
                         changeIndex: true,
                         source: source,
-                        addVNode: source,
+                        vNode: vNode,
                         sourceUid: newSourceUid,
                         sourceParentUid: newSourceParentUid,
                         sourceIndex: source.index
@@ -797,6 +812,10 @@
                 break;
             }
 
+            delete diff.equal;
+            delete diff.rate;
+            delete diff.sourceIndex;
+
             return diffs;
 
         },
@@ -852,7 +871,7 @@
                 if (diff.changeAdd) {
                     var parentVNode = bySourceUid[diff.sourceParentUid];
                     
-                    var newSourceVNode = this._cloneObject(diff.addVNode, {"DOMNode":true});
+                    var newSourceVNode = this._cloneObject(diff.vNode, {"DOMNode":true});
                     var newNode = this.vNodeToNode(newSourceVNode);
                     newSourceVNode.DOMNode = newNode;
 
