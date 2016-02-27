@@ -726,6 +726,11 @@
                     && diff.sourceIndex !== newIndex) {
 
                     //check if should relocate to a different index
+                    if (newIndex > diff.sourceIndex) {
+                        diff.relocateDisplace = true;
+                    } else {
+                        diff.relocateDisplace = false;
+                    }
 
                     diff.equal = false;
                     diff.changeIndex = true;
@@ -1005,7 +1010,7 @@
                     //add to final source childNode
                     found = false;
                     if (newParentVNode.childNodes.length === 0 || diff.relocateIndex >= newParentVNode.childNodes.length) {
-
+                        //add past end of childNodes = add to end
                         if (options.performOnDOM) {
                             newParentVNode.DOMNode.appendChild(moveNode);
                         }
@@ -1013,6 +1018,7 @@
                         newParentVNode.childNodes.push(vNode);
 
                     } else {
+
                         for (var r = 0, rl = newParentVNode.childNodes.length; r < rl; r++) {
                             if ( r === diff.relocateIndex ) {
 
@@ -1036,18 +1042,36 @@
 
                 if (!diff.changeAdd && !diff.changeParent && diff.changeIndex !== undefined) {
                     var parentVNode = bySourceUid[diff.sourceParentUid];
+                    //reindex vnodes as they can change around
                     for (var r = 0, rl = parentVNode.childNodes.length; r < rl; r++) {
                         parentVNode.childNodes[r].index = r;
                     }
 
-                    if (diff.relocateIndex === vNode.index || parentVNode.childNodes.length === 0) {
+                    if (diff.relocateIndex === vNode.index || parentVNode.childNodes.length === 1) {
                         diff.redundant = true;
                     } else {
 
-                        if (options.performOnDOM) {
-                            var afterNode = parentVNode.DOMNode.childNodes[diff.relocateIndex];
-                            var moveNode = parentVNode.DOMNode.childNodes[vNode.index];
-                            parentVNode.DOMNode.insertBefore(moveNode, afterNode);
+                        if (diff.relocateDisplace) {
+                            //insert before next, when a node is moved up a list it changes the indices of all the elements above it
+                            //it's easier to pick the node after its new position and insert before that one
+                            //makes indices come out correctly
+                            if (options.performOnDOM) {
+                                var moveNode = parentVNode.DOMNode.childNodes[vNode.index];
+
+                                var offsetIndex = diff.relocateIndex+1;
+                                if (offsetIndex >= parentVNode.DOMNode.childNodes.length) {
+                                    parentVNode.DOMNode.appendChild(moveNode);
+                                } else {
+                                    var afterNode = parentVNode.DOMNode.childNodes[offsetIndex];
+                                    parentVNode.DOMNode.insertBefore(moveNode, afterNode);
+                                }
+                            }
+                        } else {
+                            if (options.performOnDOM) {
+                                var afterNode = parentVNode.DOMNode.childNodes[diff.relocateIndex];
+                                var moveNode = parentVNode.DOMNode.childNodes[vNode.index];
+                                parentVNode.DOMNode.insertBefore(moveNode, afterNode);
+                            }
                         }
 
                         parentVNode.childNodes.splice(vNode.index,1);
