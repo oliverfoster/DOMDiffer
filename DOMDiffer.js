@@ -142,7 +142,9 @@
         _processOptions: function _processOptions() {
 
             var ignoreAttributesWithPrefix = this.options.ignoreAttributesWithPrefix;
-            if (!ignoreAttributesWithPrefix || ignoreAttributesWithPrefix.length === 0) return
+            var ignoreAttributes = this.options.ignoreAttributes;
+            if ((!ignoreAttributesWithPrefix || ignoreAttributesWithPrefix.length === 0)
+                && (!ignoreAttributes || ignoreAttributes.length === 0)) return;
 
             var regex = "";
             var lastIndex = ignoreAttributesWithPrefix.length-1;
@@ -154,7 +156,20 @@
                 }
             }
 
-            this.options._ignoreAttributesWithPrefixRegExp = new RegExp(regex, "i");
+            if (regex !== "" && ignoreAttributes.length > 0) {
+                regex += "|";
+            }
+
+            lastIndex = ignoreAttributes.length-1;
+            for (var i = 0, l = ignoreAttributes.length; i < l; i++) {
+                var attribute = ignoreAttributes[i];
+                regex+=this._escapeRegExp(attribute);
+                if (i !== lastIndex) {
+                    regex+="|";
+                }
+            }
+
+            this.options._ignoreAttributes = new RegExp(regex, "i");
 
 
         },
@@ -188,7 +203,7 @@
             if (!ignoreAttributesWithPrefix || ignoreAttributesWithPrefix.length === 0) return true;
 
             //ignore matching attribute names
-            var isMatched = this.options._ignoreAttributesWithPrefixRegExp.test(attribute);
+            var isMatched = this.options._ignoreAttributes.test(attribute);
 
             return !isMatched;
 
@@ -746,7 +761,6 @@
 
             switch (diff.nodeType) {
             case 1:
-                if (diff.source.nodeName === "INPUT") debugger;
                 if (!diff.equal
                     && (diff.changeAdd
                     || diff.changeId !== undefined
@@ -1307,7 +1321,14 @@
 
     
     function DOMDiffer(options) {
-        options = options || {};
+        options = options || {
+            ignoreAttributes: [
+            ],
+            ignoreAttributesWithPrefix: [
+                "sizzle",
+                "jquery"
+            ]
+        };
         this.options = options;
     }
     for (var k in proto) DOMDiffer.prototype[k] = proto[k];

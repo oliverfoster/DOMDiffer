@@ -69,7 +69,8 @@ require(['DOMDiffer'], function(DOMDiffer) {
 #####Options
 | Name | Type | Description |
 | --- | --- | --- |
-| ``ignoreAttributesWithPrefix`` | ``Array`` | Prefix of attributes to ignore, like ie8 jQuery expando and sizzle attributes |
+| ``ignoreAttributes`` | ``Array`` | Attributes to ignore, like ``["data", "value", "selected", "checked"]`` if you want to ignore form input values |
+| ``ignoreAttributesWithPrefix`` | ``Array`` | Prefix of attributes to ignore, like ie8 ``jquery`` and ``sizzle`` attributes. Default ``["jquery", "sizzle"]`` |
 | ``ignoreClasses`` | ``Array`` | Classes to ignore |
 | ``ignoreSubTreesWithAttributes`` | ``Array`` | Allows the differ to ignore any child nodes having certain attributes. Allows for sub views |
 
