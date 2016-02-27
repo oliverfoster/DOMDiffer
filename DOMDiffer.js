@@ -525,7 +525,7 @@
             //assign new item.sourceUids from the negative spectrum
             var addMatches = [];
             var newSourceUids = -1;
-            var translateOldUidToNew = {};
+            var translateOldDestionationUidToNewSourceUid = {};
             for (var i = 0, l = newDestinationRoots.length; i < l; i++) {
 
                 var fVSource = this._vNodeToFVNode(this._cloneObject(newDestinationRoots[i], {"DOMNode": true})); //clone for new source nodes
@@ -534,15 +534,24 @@
                 for (var c = 0, cl = fVDestination.length; c < cl; c++) {
 
                     var destination = fVDestination[c];
-                    var source = this.vNodeToOuterVNode(fVSource[c], {performOnVNode: true});
-
-                    var oldDestionationUid = destination.uid;
-                    var newSourceUid = newSourceUids--;
-                    translateOldUidToNew[oldDestionationUid] = newSourceUid;
-
                     var oldDestinationParentUid = destination.parentUid;
+                    var oldDestionationUid = destination.uid;
+
+                    var newSourceParentUid = translateOldDestionationUidToNewSourceUid[oldDestinationParentUid];
+                    
+                    //check if there is an indexed matching destination
+                    var existingDiff = uidIndexes.byDestinationUid[destination.uid];
+                    if (existingDiff) {
+                        //no need to create new nodes as nodes will be moved from existing source
+                        translateOldDestionationUidToNewSourceUid[oldDestionationUid] = existingDiff.source.uid;
+                        continue;
+                    }
+
+                    var source = this.vNodeToOuterVNode(fVSource[c], {performOnVNode: true});
+                    var newSourceUid = newSourceUids--;
+                    translateOldDestionationUidToNewSourceUid[oldDestionationUid] = newSourceUid;
+                    
                     //if we're dealing with a child of a new root
-                    var newSourceParentUid = translateOldUidToNew[oldDestinationParentUid];
                     if (newSourceParentUid === undefined) {
                         //if no translation to a new uid, not a child of a new root
                         //assume new node is connected to a preexisting source node
