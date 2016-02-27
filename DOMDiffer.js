@@ -52,7 +52,7 @@
                 nodeType: DOMNode.nodeType,
                 nodeName: DOMNode.nodeName,
                 attributes: {},
-                id: false,
+                id: "",
                 classes: {},
                 childNodes: [],
                 depth: depth,
@@ -343,28 +343,31 @@
             var fIndex = fVSource.length-1;
             var f2Index = fVDestination.length-1;
 
-            var maxRating = -1, maxRated, maxRatedF2Index;
-            while (fIndex >= 0 && (fVSource.length !== 0 && fVDestination.length !== 0)) {
+            var maxRating = -1, maxRated, maxRatedSIndex;
 
-                var source = fVSource[fIndex];
-                var destination = fVDestination[f2Index];
+            var destinationTop = fVDestination.length;
+            for (var dIndex = 0; dIndex < destinationTop; dIndex++) {
 
-                var sourceUid = source.uid;
-                var destinationUid = destination.uid;
+                var destination = fVDestination[dIndex];
 
-                matchIndex[sourceUid] = matchIndex[sourceUid] || {};
-                matchIndex[sourceUid][destinationUid] = matchIndex[sourceUid][destinationUid] || this._rateCompare(destination, source);
+                for (var sIndex = 0, sLength = fVSource.length; sIndex < sLength; sIndex++) {
 
-                var rate = matchIndex[sourceUid][destinationUid];
+                    var source = fVSource[sIndex];
 
-                if (rate > maxRating && rate >= minRate) {
-                    maxRated = destination;
-                    maxRating = rate;
-                    maxRatedF2Index = f2Index;
-                    if (rate >= minRate && rate >= 0.8) {
-                        if (maxRated !== undefined) {
-                            fVSource.splice(fIndex, 1);
-                            fVDestination.splice(maxRatedF2Index, 1);
+                    var sourceUid = source.uid;
+                    var destinationUid = destination.uid;
+
+                    matchIndex[sourceUid] = matchIndex[sourceUid] || {};
+                    matchIndex[sourceUid][destinationUid] = matchIndex[sourceUid][destinationUid] || this._rateCompare(destination, source);
+
+                    var rate = matchIndex[sourceUid][destinationUid];
+                    if (rate > maxRating && rate >= minRate) {
+                        maxRated = source;
+                        maxRating = rate;
+                        maxRatedSIndex = sIndex;
+                        if (rate >= minRate && rate >= 0.8) {
+                            fVSource.splice(sIndex, 1);
+                            fVDestination.splice(dIndex, 1);
                             diffObj = {
                                 source: source,
                                 destination: destination,
@@ -372,52 +375,45 @@
                                 sourceUid: sourceUid,
                                 sourceParentUid: source.parentUid,
                                 sourceIndex: source.index,
-                                destinationUid: maxRated.uid,
-                                destinationParentUid: maxRated.parentUid,
+                                destinationUid: destination.uid,
+                                destinationParentUid: destination.parentUid,
                                 equal: rate === 1,
                                 rate: rate
                             };
                             sourceMatches.push(diffObj);
+                            maxRating = 0;
+                            maxRated = undefined;
+                            maxRatedSIndex = undefined;
+                            dIndex = 0;
+                            destinationTop--;
+                            break;
                         }
-                        maxRating = 0;
-                        maxRated = undefined;
-                        maxRatedF2Index = undefined;
-                        fIndex--;
-                        f2Index = fVDestination.length-1;
-                        continue;
                     }
-                }
-                
-                f2Index--;
-                if (f2Index === -1) {
-                    if (maxRated !== undefined && maxRating >= minRate) {
-                        if (source.parentUid === -1) {
-                            debugger;
-                        }
-                        fVSource.splice(fIndex, 1);
-                        fVDestination.splice(maxRatedF2Index, 1);
-                        diffObj = {
-                            source: source,
-                            destination: maxRated,
-                            nodeType: source.nodeType,
-                            sourceUid: sourceUid,
-                            sourceParentUid: source.parentUid,
-                            sourceIndex: source.index,
-                            destinationUid: maxRated.uid,
-                            destinationParentUid: maxRated.parentUid,
-                            equal: false,
-                            rate: maxRating
-                        };
-                        sourceMatches.push(diffObj);
-                    }
-                    maxRating = 0;
-                    maxRated = undefined;
-                    maxRatedF2Index = undefined;
-                    fIndex--;
-                    f2Index = fVDestination.length-1;
-                    continue;
+
                 }
 
+                if (maxRated && maxRating >= minRate) {
+                    fVSource.splice(maxRatedSIndex, 1);
+                    fVDestination.splice(dIndex, 1);
+                    diffObj = {
+                        source: maxRated,
+                        destination: destination,
+                        nodeType: maxRated.nodeType,
+                        sourceUid: maxRated.uid,
+                        sourceParentUid: maxRated.parentUid,
+                        sourceIndex: maxRated.index,
+                        destinationUid: destination.uid,
+                        destinationParentUid: destination.parentUid,
+                        equal: rate === 1,
+                        rate: rate
+                    };
+                    sourceMatches.push(diffObj);
+                    maxRating = 0;
+                    maxRated = undefined;
+                    maxRatedSIndex = undefined;
+                    dIndex = 0;
+                    destinationTop--;
+                }
             }
 
         }, 
@@ -496,7 +492,7 @@
         //manufacture 'matches' for the items to remove from the source tree
         _createRemoveMatches: function _createRemoveMatches(fVSource2, sourceMatches) {
             var removes = [];
-            for (var i = 0, l = fVSource2.length; i < l; i++) {
+            for (var i = fVSource2.length-1, l = -1; i > l; i--) {
                 var source = fVSource2[i];
                 var diffObj = {
                     changeRemove: true,
@@ -507,13 +503,14 @@
                 };
                 sourceMatches.push(diffObj);
                 removes.push(diffObj);
+                fVSource2.splice(i,1);
             }
             return removes;
         },
 
         //manufacture 'matches' for the items to add to the source tree from the destination
         _createAddMatches: function _createAddMatches(fVDestination2, sourceMatches, uidIndexes) {
-            if (fVDestination2.length === 0) return;
+            if (fVDestination2.length === 0) return [];
             //create new source pieces to add by cloning the needed destination pieces
 
             var newDestinationRoots = [];
@@ -616,8 +613,8 @@
             for (var i = 0, l = sourceMatches.length; i < l; i++) {
                 var diff = sourceMatches[i];
                 this._expandDifferences(diff, uidIndexes);
-                delete diff.source;
-                delete diff.destination;
+                //delete diff.source;
+                //delete diff.destination;
             }
         },
 
@@ -638,26 +635,10 @@
                 if (source.id !== destination.id) match.changeId = destination.id;
 
 
-                if (match.changeId
-                    || match.changeNodeName
+                if (match.changeId !== undefined
+                    || match.changeNodeName !== undefined
                     || !match.changeAttributes.isEqual
                     || !match.changeClasses.isEqual) match.equal = false;
-
-                if (match.destinationParentUid === -1) break;
-
-                var relocateParentUid = uidIndexes.byDestinationUid[match.destinationParentUid].sourceUid;
-                if (relocateParentUid !== match.sourceParentUid) {
-                    match.relocateIndex =  destination.index;
-                    match.relocateParentUid = relocateParentUid;
-                    match.changeParent = true;
-                } else if (source.index !== destination.index) {
-                    match.relocateIndex =  destination.index;
-                    match.changeIndex = true;
-                }
-
-                if (match.changeIndex
-                    || match.changeParent
-                    ) match.equal = false;
 
                 break;
             case 3:
@@ -722,79 +703,60 @@
 
         //recursively go through the destination tree, checking each source mapped node (or added node) and outputing the match-diffs where necessary
         //this filters and orders the match-diffs creating a preliminary differential
-        _rebuildDestinationFromSourceMatches: function _rebuildDestinationFromSourceMatches(startVNode, sourceMatches, uidIndexes, parentVNode, newIndex) {
-            
-            /*if (!uidIndexes) {
-                uidIndexes = {
-                    bySourceUid: {},
-                    byDestinationUid: {}
-                };
-                var bySourceUid = uidIndexes.bySourceUid;
-                var byDestinationUid = uidIndexes.byDestinationUid;
-
-                for (var i = 0, l = sourceMatches.length; i < l; i++) {
-                    var diff = sourceMatches[i];
-                    if (diff.sourceUid !== undefined) {
-                        bySourceUid[diff.sourceUid] = diff;
-                    }
-                    if (diff.destinationUid !== undefined) {
-                        byDestinationUid[diff.destinationUid] = diff;
-                    }
-                }
-            };*/
+        _rebuildDestinationFromSourceMatches: function _rebuildDestinationFromSourceMatches(destinationStartVNode, sourceMatches, uidIndexes, destinationParentVNode, newIndex) {
 
             var diffs = [];
-            var diff = uidIndexes.byDestinationUid[startVNode.uid];
+            var diff = uidIndexes.byDestinationUid[destinationStartVNode.uid];
 
-            
-            //check if equal but should be in a different parent or at different index
-            if (diff.equal && parentVNode !== undefined
-                && uidIndexes.bySourceUid[diff.sourceParentUid] 
-                && uidIndexes.bySourceUid[diff.sourceParentUid].destinationUid !== parentVNode.uid 
-                ) {
+            if (diff.sourceParentUid !== -1) {
+                var sourceParentDiff = uidIndexes.bySourceUid[diff.sourceParentUid];
+                
+                //if source parent destination match, is not the same as the expected destination then move
+                if (sourceParentDiff.destinationUid !== destinationParentVNode.uid) {
 
-                var modeToSourceUid = uidIndexes.byDestinationUid[parentVNode.uid].sourceUid;
-                //mark to move into a different parent
-                diff.equal = false;
-                diff.changeParent = true;
-                diff.changeIndex = true;
-                //fetch source parent to relocate node to
-                diff.relocateParentUid = modeToSourceUid;
-                diff.relocateIndex = newIndex;
-            } else if (newIndex !== undefined
-                && diff.sourceIndex !== newIndex) {
+                    var moveToSourceUid = uidIndexes.byDestinationUid[destinationParentVNode.uid].sourceUid;
+                    //mark to move into a different parent
+                    diff.equal = false;
+                    diff.changeParent = true;
+                    diff.changeIndex = true;
+                    //fetch source parent to relocate node to
+                    diff.relocateParentUid = moveToSourceUid;
+                    diff.relocateIndex = newIndex;
+                } else if (newIndex !== undefined
+                    && diff.sourceIndex !== newIndex) {
 
-                //check if should relocate to a different index
+                    //check if should relocate to a different index
 
-                diff.equal = false;
-                diff.changeIndex = true;
-                diff.relocateIndex = newIndex;
+                    diff.equal = false;
+                    diff.changeIndex = true;
+                    diff.relocateIndex = newIndex;
+                }
             }
 
             switch (diff.nodeType) {
             case 1:
                 if (!diff.equal
                     && (diff.changeAdd
-                    || diff.changeId
-                    || diff.changeNodeName
+                    || diff.changeId !== undefined
+                    || diff.changeNodeName !== undefined
                     || (diff.changeAttributes && !diff.changeAttributes.isEqual)
                     || (diff.changeClasses && !diff.changeClasses.isEqual)
-                    || diff.changeParent
-                    || diff.changeIndex
+                    || diff.changeParent !== undefined
+                    || diff.changeIndex !== undefined
                     )) {
                     diffs.push(diff);
                 }
-                for (var i = 0, l = startVNode.childNodes.length; i < l; i++) {
-                    var childNode = startVNode.childNodes[i];
-                    diffs = diffs.concat(this._rebuildDestinationFromSourceMatches(childNode, sourceMatches, uidIndexes, startVNode, i));
+                for (var i = 0, l = destinationStartVNode.childNodes.length; i < l; i++) {
+                    var childNode = destinationStartVNode.childNodes[i];
+                    diffs = diffs.concat(this._rebuildDestinationFromSourceMatches(childNode, sourceMatches, uidIndexes, destinationStartVNode, i));
                 }
                 break;
             case 3:
                 if (!diff.equal
-                    && (diff.changeData
+                    && (diff.changeData !== undefined
                     || diff.changeAdd
-                    || diff.changeParent
-                    || diff.changeIndex
+                    || diff.changeParent !== undefined
+                    || diff.changeIndex !== undefined
                     )) {
                     diffs.push(diff);
                 }
@@ -921,9 +883,13 @@
                     diff.complete = true;
                 }
 
-                if (diff.changeId) {
+                if (diff.changeId !== undefined) {
                     if (options.performOnDOM) {
-                        vNode.DOMNode.setAttribute('id', diff.changeId);
+                        if (diff.changeId === "") {
+                            vNode.DOMNode.removeAttribute('id');
+                        } else {
+                            vNode.DOMNode.setAttribute('id', diff.changeId);
+                        }
                     }
                     vNode.id = diff.changeId;
                     diff.complete = true;
@@ -968,7 +934,7 @@
                 }
 
                 //change data
-                if (diff.changeData !== false && diff.changeData !== undefined) {
+                if (diff.changeData !== undefined) {
 
                     if (options.performOnDOM) {
                         vNode.DOMNode.data = diff.changeData;
@@ -979,7 +945,7 @@
                 }
 
                 //change nodeName
-                if (diff.changeNodeName !== false && diff.changeNodeName !== undefined) {
+                if (diff.changeNodeName !== undefined) {
 
                     if (options.performOnDOM) {
                         //create a new node, add the attributes
@@ -1013,7 +979,7 @@
                     diff.complete = true;
                 }
 
-                if (diff.changeParent) {
+                if (diff.changeParent !== undefined) {
                     var oldParentVNode = bySourceUid[diff.sourceParentUid];
                     var newParentVNode = bySourceUid[diff.relocateParentUid];
 
@@ -1068,7 +1034,7 @@
 
                 }
 
-                if (!diff.changeAdd && !diff.changeParent && diff.changeIndex) {
+                if (!diff.changeAdd && !diff.changeParent && diff.changeIndex !== undefined) {
                     var parentVNode = bySourceUid[diff.sourceParentUid];
                     for (var r = 0, rl = parentVNode.childNodes.length; r < rl; r++) {
                         parentVNode.childNodes[r].index = r;
