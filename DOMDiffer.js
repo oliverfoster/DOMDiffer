@@ -600,6 +600,8 @@
                         vNode.data = source.data;
                         vNode.nodeType = source.nodeType;
                     }
+                    vNode.uid = newSourceUid;
+                    vNode.parentUid = newSourceParentUid;
 
                     var diffObj = {
                         changeAdd: true,
@@ -655,8 +657,8 @@
             for (var i = 0, l = sourceMatches.length; i < l; i++) {
                 var diff = sourceMatches[i];
                 this._expandDifferences(diff, uidIndexes);
-                delete diff.source;
-                delete diff.destination;
+                /*delete diff.source;
+                delete diff.destination;*/
             }
         },
 
@@ -864,7 +866,7 @@
                     }
                     if (!found) throw "Remove not found";
 
-                    diff.complete = true;
+                    
                     continue;
                 }
 
@@ -877,27 +879,15 @@
 
                     //index the new diff by source id so that subsequent child adds have somewhere to go
                     bySourceUid[diff.sourceUid] = newSourceVNode;
+                    vNode = newSourceVNode;
 
-                    if (parentVNode.childNodes.length === 0) {
-
-                        if (options.performOnDOM) {
-                            parentVNode.DOMNode.appendChild(newNode);
-                        }
-
-                        parentVNode.childNodes.push(newSourceVNode);
-
-                    } else {
-
-                        if (options.performOnDOM) {
-                            //assign the new node to the diff otherwise subsequent children will add to the previous destination as a parent
-                            parentVNode.DOMNode.insertBefore(newNode, parentVNode.DOMNode.childNodes[diff.relocateIndex]);
-                        }
-
-                        parentVNode.childNodes.splice(diff.relocateIndex,0, newSourceVNode);
+                    //add to the end
+                    if (options.performOnDOM) {
+                        parentVNode.DOMNode.appendChild(newNode);
                     }
 
-                    diff.complete = true;
-                    continue;
+                    parentVNode.childNodes.push(newSourceVNode);
+
                 }
                 
                 //change attributes
@@ -933,7 +923,7 @@
                             vNode.attributes[k] = attributes.added[k];
                         }
                     }
-                    diff.complete = true;
+                    
                 }
 
                 if (diff.changeId !== undefined) {
@@ -945,7 +935,7 @@
                         }
                     }
                     vNode.id = diff.changeId;
-                    diff.complete = true;
+                    
                 }
 
                 //change classes
@@ -983,18 +973,7 @@
                         }
                     }
 
-                    diff.complete = true;
-                }
-
-                //change data
-                if (diff.changeData !== undefined) {
-
-                    if (options.performOnDOM) {
-                        vNode.DOMNode.data = diff.changeData;
-                    }
-
-                    vNode.data = diff.changeData;
-                    diff.complete = true;
+                    
                 }
 
                 //change nodeName
@@ -1018,10 +997,11 @@
                     }
 
                     vNode.nodeName = diff.changeNodeName;
-                    diff.complete = true;
+                    
                 }
 
                 if (diff.changeParent !== undefined) {
+
                     var oldParentVNode = bySourceUid[diff.sourceParentUid];
                     var newParentVNode = bySourceUid[diff.relocateParentUid];
 
@@ -1044,41 +1024,25 @@
                         throw "cannot find object to move in parent";
                     }
 
-                    //add to final source childNode
-                    found = false;
-                    if (newParentVNode.childNodes.length === 0 || diff.relocateIndex >= newParentVNode.childNodes.length) {
-                        //add past end of childNodes = add to end
-                        if (options.performOnDOM) {
-                            newParentVNode.DOMNode.appendChild(moveNode);
-                        }
-
-                        newParentVNode.childNodes.push(vNode);
-
-                    } else {
-
-                        for (var r = 0, rl = newParentVNode.childNodes.length; r < rl; r++) {
-                            if ( r === diff.relocateIndex ) {
-
-                                if (options.performOnDOM) {
-                                    newParentVNode.DOMNode.insertBefore(moveNode, newParentVNode.DOMNode.childNodes[r]);
-                                }
-
-                                newParentVNode.childNodes.splice(r, 0, vNode);
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found) {
-                            throw "cannot find object to move in parent";
-                        }
+                    //add to the end
+                    if (options.performOnDOM) {
+                        newParentVNode.DOMNode.appendChild(moveNode);
                     }
 
-                    diff.complete = true;
+                    newParentVNode.childNodes.push(vNode);
 
                 }
 
-                if (!diff.changeAdd && !diff.changeParent && diff.changeIndex !== undefined) {
-                    var parentVNode = bySourceUid[diff.sourceParentUid];
+                if (diff.changeIndex !== undefined) {
+
+                    var parentVNode;
+                    if (diff.changeParent) {
+                        //if node changed parents last
+                        parentVNode = bySourceUid[diff.relocateParentUid];
+                    } else {
+                        parentVNode = bySourceUid[diff.sourceParentUid];
+                    }
+                    
                     //reindex vnodes as they can change around
                     for (var r = 0, rl = parentVNode.childNodes.length; r < rl; r++) {
                         parentVNode.childNodes[r].index = r;
@@ -1121,7 +1085,17 @@
                         parentVNode.childNodes.splice(diff.relocateIndex,0,vNode);
                     }
 
-                    diff.complete = true;
+                }
+
+                //change data
+                if (diff.changeData !== undefined) {
+
+                    if (options.performOnDOM) {
+                        vNode.DOMNode.data = diff.changeData;
+                    }
+
+                    vNode.data = diff.changeData;
+                    
                 }
 
             }
@@ -1338,8 +1312,7 @@
     
     function DOMDiffer(options) {
         options = options || {
-            ignoreAttributes: [
-            ],
+            ignoreAttributes: [],
             ignoreAttributesWithPrefix: [
                 "sizzle",
                 "jquery"
