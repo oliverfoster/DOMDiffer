@@ -137,3 +137,7 @@ require(['DOMDiffer'], function(DOMDiffer) {
 | ``nodeReplaceChildren(node1, node2);`` | ``undefined`` | Removes the children from ``node1`` and moves the children from ``node2`` into it |
 | ``stringToNode(htmlString);`` | ``Node`` | Turns a string into a DOM node |
 | ``nodeUpdateNode(node1, node2, options);`` | ``Object`` | Update ``node1`` from ``node2``. ``{test: true, errorOnFail: true, returnVNode: true, ignoreContainer: true}`` Returns ``vNode`` or ``DOMDiffer`` instance. Can test output and error on failure |
+
+####Test:
+
+[Simple jsfiddle](https://jsfiddle.net/b6Lf8n6h/)
