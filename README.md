@@ -11,6 +11,22 @@ require(['DOMDiffer'], function(DOMDiffer) {
     /* options here */
   });
   
+  ddInstance.nodeUpdateNode( nodeInDocument, renderedTemplate );
+  
+});
+
+
+```
+
+#####Slightly more verbose example 1:
+```javascript
+
+require(['DOMDiffer'], function(DOMDiffer) {
+
+  var ddInstance = new DOMDiffer({
+    /* options here */
+  });
+  
   var renderedTemplate = document.getElementById("node2"); //just an example
   var nodeInDocument = document.getElementById("node1");
 
@@ -23,7 +39,7 @@ require(['DOMDiffer'], function(DOMDiffer) {
 
 ```
 
-#####Slightly more verbose example:
+#####Slightly more verbose example 2:
 ```javascript
 
 require(['DOMDiffer'], function(DOMDiffer) {
@@ -88,4 +104,4 @@ require(['DOMDiffer'], function(DOMDiffer) {
 | ``vNodeToOuterVNode(vNode, options);`` | ``Object`` | Returns ``vNode`` without the children. Use ```{performOnVNode:true}``` to override the default behaviour and return a clone instead |
 | ``nodeToOuterVNode(vNode);`` | ``Object`` | Returns a ``vNode`` of ``node`` without the children |
 | ``nodeReplaceChildren(node1, node2);`` | ``undefined`` | Removes the children from ``node1`` and moves the children from ``node2`` into it |
-| ``nodeUpdateNode(node1, node2, options);`` | ``Object`` |  ``{test: true, errorOnFail: true, returnVNode: true}`` Returns ``vNode`` or ``DOMDiffer`` instance. Can test output and error on failure |
+| ``nodeUpdateNode(node1, node2, options);`` | ``Object`` | Update ``node1`` from ``node2``. ``{test: true, errorOnFail: true, returnVNode: true}`` Returns ``vNode`` or ``DOMDiffer`` instance. Can test output and error on failure |
