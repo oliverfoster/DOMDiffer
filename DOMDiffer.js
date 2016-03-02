@@ -477,9 +477,24 @@
 
                 break;
             case 3:
-                value+=vsource.trimmed === vdestination.trimmed ? 2 : 0;
-                value+=vsource.data === vdestination.data ? 1 : 0;
-                rate = (value / 3) || -1;
+                value+=vsource.depth === vdestination.depth ? 3 : 0;
+                value+=vsource.index === vdestination.index ? 1 : 0;
+
+                //ignore whitespace changes
+                if (this.options.ignoreWhitespace) {
+                    if (vsource.trimmed === vdestination.trimmed && vsource.trimmed === "") {
+                        value+=vsource.trimmed === vdestination.trimmed ? 2 : 0;
+                        value+=1;
+                    } else {
+                        value+=vsource.trimmed === vdestination.trimmed ? 2 : 0;
+                        value+=vsource.data === vdestination.data ? 1 : 0;
+                    }
+                } else {
+                    value+=vsource.trimmed === vdestination.trimmed ? 2 : 0;
+                    value+=vsource.data === vdestination.data ? 1 : 0;
+                }
+                
+                rate = (value / 7) || -1;
             }
 
             return rate;
@@ -688,7 +703,14 @@
 
                 break;
             case 3:
-                if (source.data !== destination.data) match.changeData = destination.data;
+                //ignore whitespace changes
+                if (this.options.ignoreWhitespace) {
+                    if (source.trimmed !== destination.trimmed && source.trimmed !== "") {
+                        if (source.data !== destination.data) match.changeData = destination.data;
+                    }
+                } else {
+                    if (source.data !== destination.data) match.changeData = destination.data;
+                }
 
                 if (match.changeData) match.equal = false;
                 break;
@@ -1051,8 +1073,11 @@
                     if (diff.relocateIndex === vNode.index || parentVNode.childNodes.length === 1) {
                         if (!diff.changeAttributes
                             && !diff.changeClass
-                            && !diff.changeNodeName
-                            && diff.changeData !== undefined) {
+                            && diff.changeNodeName === undefined
+                            && diff.changeData === undefined
+                            && !diff.changeParent
+                            && !diff.changeAdd
+                            && !diff.changeRemove) {
                                 //remove diff if only changing index
                                 diff.redundant = true;
                         }
@@ -1248,7 +1273,8 @@
                 }
                 break;
             case 3:
-                DOMNode = document.createTextNode(vNode.data);
+                DOMNode = document.createTextNode("");
+                DOMNode.data = vNode.data;
                 break;
             }
 
