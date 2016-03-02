@@ -78,15 +78,14 @@ require(['DOMDiffer'], function(DOMDiffer) {
 | Name | Returns | Description |
 | ------------------------------------ | --- | --- |
 | ``nodeToVNode(node);`` | ``Object`` | Returns a ``vNode`` object tree representing the dom ``node`` and its children positions in the tree |
-| ``vNodeToNode(node)`` | ``Node`` | The opposite of the above function |
-| ``nodesDiff(node1, node2, options)`` | ``Array`` | Returns an array of objects describing the differences between the ``nodes`` |
-| ``vNodesDiff(vNode1, vNode2, options)`` | ``Array`` | Returns an array of objects describing the differences between the ``vNodes`` |
-| ``nodeDiffApply(node1, diff, options)`` | ``Object`` | Returns the ``vNode`` of ``node1`` with the ``diff`` applied and applies the ``diff`` to ``node1``. Use ```{performOnVNode:true, performOnDOM:true}``` to override behaviour  |
-| ``vNodeDiffApply(vNode1, diff, options)`` | ``Object`` | Returns ``vNode1`` with the diff applied and applies the diff to ``vNode1``'s original parent. Use ```{performOnVNode:true, performOnDOM:true}``` to override behaviour |
-| ``nodesAreEqual(node1, node2)`` | ``boolean`` | Returns ``true`` if ``nodes`` are equal  |
-| ``vNodesAreEqual(vNode1, vNode2)`` | ``boolean`` | Returns ``true`` if ``vNodes`` are equal  |
-| ``vNodeToOuterVNode(vNode, options)`` | ``Object`` | Returns ``vNode`` without the children. Use ```{performOnVNode:true}``` to override the default behaviour and return a clone instead |
-| ``nodeToOuterVNode(vNode)`` | ``Object`` | Returns a ``vNode`` of ``node`` without the children |
-| ``nodeReplaceChildren(node1, node2)`` | ``undefined`` | Removes the children from ``node1`` and moves the children from ``node2`` into it |
-
-
+| ``vNodeToNode(node);`` | ``Node`` | The opposite of the above function |
+| ``nodesDiff(node1, node2, options);`` | ``Array`` | Returns an array of objects describing the differences between the ``nodes`` |
+| ``vNodesDiff(vNode1, vNode2, options);`` | ``Array`` | Returns an array of objects describing the differences between the ``vNodes`` |
+| ``nodeDiffApply(node1, diff, options);`` | ``Object`` | Returns the ``vNode`` of ``node1`` with the ``diff`` applied and applies the ``diff`` to ``node1``. Use ```{performOnVNode:true, performOnDOM:true}``` to override behaviour  |
+| ``vNodeDiffApply(vNode1, diff, options);`` | ``Object`` | Returns ``vNode1`` with the diff applied and applies the diff to ``vNode1``'s original parent. Use ```{performOnVNode:true, performOnDOM:true}``` to override behaviour |
+| ``nodesAreEqual(node1, node2);`` | ``boolean`` | Returns ``true`` if ``nodes`` are equal  |
+| ``vNodesAreEqual(vNode1, vNode2);`` | ``boolean`` | Returns ``true`` if ``vNodes`` are equal  |
+| ``vNodeToOuterVNode(vNode, options);`` | ``Object`` | Returns ``vNode`` without the children. Use ```{performOnVNode:true}``` to override the default behaviour and return a clone instead |
+| ``nodeToOuterVNode(vNode);`` | ``Object`` | Returns a ``vNode`` of ``node`` without the children |
+| ``nodeReplaceChildren(node1, node2);`` | ``undefined`` | Removes the children from ``node1`` and moves the children from ``node2`` into it |
+| ``nodeUpdateNode(node1, node2, options);`` | ``Object`` |  ``{test: true, errorOnFail: true, returnVNode: true}`` Returns ``vNode`` or ``DOMDiffer`` instance. Can test output and error on failure |

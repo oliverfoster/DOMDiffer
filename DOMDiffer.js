@@ -1383,11 +1383,19 @@
                 if (!updatedVSRereadUpdated 
                     || !updatedVSOriginal
                     || !rereadUpdatedVSOriginal) {
-                    console.log("failed update");
+                    if (options.errorOnFail) {
+                        throw "failed update";
+                    } else {
+                        console.log("failed update");
+                    }
                 }
             }
 
-
+            if (options.returnVNode) {
+                return vNode1;
+            } else {
+                return this;
+            }
 
         }
 
