@@ -124,6 +124,7 @@ require(['DOMDiffer'], function(DOMDiffer) {
 ####Functions
 | Name | Returns | Description |
 | ------------------------------------ | --- | --- |
+| ``setOptions(options);`` | ``undefined`` | Allows instance options to be undated and processed |
 | ``nodeToVNode(node);`` | ``Object`` | Returns a ``vNode`` object tree representing the dom ``node`` and its children positions in the tree |
 | ``vNodeToNode(node);`` | ``Node`` | The opposite of the above function |
 | ``nodesDiff(node1, node2, options);`` | ``Array`` | Returns an array of objects describing the differences between the ``nodes``. ``{ignoreContainer: true}`` |

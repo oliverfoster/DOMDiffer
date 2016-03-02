@@ -21,45 +21,9 @@
 
     var proto = {
 
-        //turn dom nodes into vnodes and diff
-        nodesDiff: function nodesDiff(source, destination, options) {
-            var vsource = this.nodeToVNode(source);
-            var vdestination = this.nodeToVNode(destination);
-            return this.vNodesDiff(vsource, vdestination, options);
-        },
+        setOptions: function setOptions(options) {
 
-        //turn dom node into vnode
-        nodeToVNode: function nodeToVNode(DOMNode, options, context) {
-
-            options = options || {};
-
-            if (context === undefined) {
-
-                context = {
-                    depth: 0,
-                    index: 0,
-                    uid: 0,
-                    parentUid: -1
-                };
-
-                //setup regexs etc
-                this._processOptions();
-            }
-
-            //build vNode
-            var vNode = this._vNodeFromNode(DOMNode, context);
-
-            this._vNodeAttributes(DOMNode, vNode);
-            this._injectSpecialAttributes(DOMNode, vNode);
-
-            if (options.ignoreChildren !== true) {
-                this._vNodeChildren(DOMNode, vNode, options, context);
-            }
-            
-            return vNode;
-        },
-
-        _processOptions: function _processOptions() {
+            this.options = options || {};
 
             var ignoreAttributesWithPrefix = this.options.ignoreAttributesWithPrefix;
             var ignoreAttributes = this.options.ignoreAttributes;
@@ -96,6 +60,42 @@
 
         _escapeRegExp: function _escapeRegExp(str) {
           return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+        },
+
+        //turn dom nodes into vnodes and diff
+        nodesDiff: function nodesDiff(source, destination, options) {
+            var vsource = this.nodeToVNode(source);
+            var vdestination = this.nodeToVNode(destination);
+            return this.vNodesDiff(vsource, vdestination, options);
+        },
+
+        //turn dom node into vnode
+        nodeToVNode: function nodeToVNode(DOMNode, options, context) {
+
+            options = options || {};
+
+            if (context === undefined) {
+
+                context = {
+                    depth: 0,
+                    index: 0,
+                    uid: 0,
+                    parentUid: -1
+                };
+
+            }
+
+            //build vNode
+            var vNode = this._vNodeFromNode(DOMNode, context);
+
+            this._vNodeAttributes(DOMNode, vNode);
+            this._injectSpecialAttributes(DOMNode, vNode);
+
+            if (options.ignoreChildren !== true) {
+                this._vNodeChildren(DOMNode, vNode, options, context);
+            }
+            
+            return vNode;
         },
 
         _vNodeFromNode: function _vNodeFromNode(DOMNode, context) {
@@ -1424,7 +1424,7 @@
                 "view-container"
             ]
         };
-        this.options = options;
+        this.setOptions(options);
     }
     for (var k in proto) DOMDiffer.prototype[k] = proto[k];
 
