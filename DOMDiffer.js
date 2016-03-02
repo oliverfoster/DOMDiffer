@@ -923,16 +923,16 @@
                 
                 //change attributes
                 if (diff.changeAttributes === true) {
-                    this._changeAttributes(diff, vNode, bySourceUid, options);
+                    this._changeAttributes(diff, vNode, options);
                 }
 
                 if (diff.changeId === true) {
-                    this._changeId(diff, vNode, bySourceUid, options);
+                    this._changeId(diff, vNode, options);
                 }
 
                 //change classes
                 if (diff.changeClasses === true) {
-                    this._changeClasses(diff, vNode, bySourceUid, options);                    
+                    this._changeClasses(diff, vNode, options);                    
                 }
 
                 //change nodeName
@@ -950,11 +950,11 @@
 
                 //change data
                 if (diff.changeData === true) {
-                    this._changeData(diff, vNode, bySourceUid, options);                    
+                    this._changeData(diff, vNode, options);                    
                 }
 
                 if (diff.changeLocation === true) {
-                    this._changeLocation(diff, vNode, bySourceUid, options);
+                    this._changeLocation(diff, vNode);
                 }
 
             }
@@ -1006,7 +1006,7 @@
             return vNode;
         },
 
-        _changeAttributes: function _changeAttributes(diff, vNode, bySourceUid, options) {
+        _changeAttributes: function _changeAttributes(diff, vNode, options) {
             var attributes = diff.attributes;
             if (attributes.removed.length > 0) {
                 for (var r = 0, rl = attributes.removed.length; r < rl; r++) {
@@ -1041,7 +1041,7 @@
             }
         },
 
-        _changeId: function _changeId(diff, vNode, bySourceUid, options) {
+        _changeId: function _changeId(diff, vNode, options) {
             if (options.performOnDOM === true) {
                 if (diff.id === "") {
                     vNode.DOMNode.removeAttribute('id');
@@ -1052,7 +1052,7 @@
             vNode.id = diff.id;
         },
 
-        _changeClasses: function _changeClasses(diff, vNode, bySourceUid, options) {
+        _changeClasses: function _changeClasses(diff, vNode, options) {
             var classes = diff.classes;
             if (classes.removed.length > 0) {
                 for (var r = 0, rl = classes.removed.length; r < rl; r++) {
@@ -1201,7 +1201,7 @@
             }
         },
 
-        _changeData: function _changeData(diff, vNode, bySourceUid, options) {
+        _changeData: function _changeData(diff, vNode, options) {
             if (options.performOnDOM === true) {
                 vNode.DOMNode.data = diff.data;
             }
@@ -1210,7 +1210,7 @@
             vNode.trimmed = diff.trimmed;
         },
 
-        _changeLocation: function _changeLocation(diff, vNode, bySourceUid, options) {
+        _changeLocation: function _changeLocation(diff, vNode) {
             vNode.depth = diff.depth;
             vNode.deep = diff.deep;
         },
