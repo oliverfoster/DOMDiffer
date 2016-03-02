@@ -1395,6 +1395,8 @@
 
             if (options.returnVNode === true) {
                 return vNode1;
+            } else if (options.returnDiff === true) {
+                return diff;
             } else {
                 return this;
             }
