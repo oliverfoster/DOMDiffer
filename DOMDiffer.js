@@ -98,10 +98,10 @@
           return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
         },
 
-        _vNodeFromNode: function _vNodeFromNode(DOMNode, options) {
+        _vNodeFromNode: function _vNodeFromNode(DOMNode, context) {
             //capture depth and index from parent
-            var depth = options.depth;
-            var index = options.index;
+            var depth = context.depth;
+            var index = context.index;
             
             var vNode = {
                 DOMNode: DOMNode,
@@ -114,8 +114,8 @@
                 depth: depth,
                 index: index,
                 deep: 0,
-                uid: options.uid++,
-                parentUid: options.parentUid
+                uid: context.uid++,
+                parentUid: context.parentUid
             };
             return vNode;
         },
