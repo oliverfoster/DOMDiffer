@@ -10,6 +10,9 @@ require(['DOMDiffer'], function(DOMDiffer) {
   var ddInstance = new DOMDiffer({
     /* options here */
   });
+
+  var renderedTemplate = document.getElementById("node2"); //just an example
+  var nodeInDocument = document.getElementById("node1");
   
   ddInstance.nodeUpdateNode( nodeInDocument, renderedTemplate );
   
