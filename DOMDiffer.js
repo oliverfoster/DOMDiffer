@@ -1404,6 +1404,14 @@
                 return this;
             }
 
+        },
+
+        stringToNode: function(htmlString) {
+
+            var container = document.createElement("div");
+            container.innerHTML = htmlString;
+            return container.childNodes[0];
+
         }
 
     };
