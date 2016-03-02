@@ -28,29 +28,33 @@ JAVASCRIPT
 
 $(function() {
 	//create DOMDiffer instance
-  var ddInstance = new DOMDiffer();
+  	var ddInstance = new DOMDiffer();
 
 	//capture 'fake' template and dom
-  var $template = $($("#wrapper > .container")[0]);
-  var $dom = $($("#wrapper > .container")[1]);
+  	var $template = $($("#wrapper > .container")[0]);
+  	var $dom = $($("#wrapper > .container")[1]);
 
 	$("#update").on("click", function() {
-    var start = (new Date()).getTime();
 
-    try {
-      ddInstance.nodeUpdateNode($dom[0], $template[0], {
-        test: false,
-        errorOnFail: true,
-        ignoreContainer: true
-      });
-    } catch (e) {
-      alert("Diffing failed, please report this to oliver.foster@kineo.com");
-    }
+	    var start = (new Date()).getTime();
 
-    console.log("DOMDiffer - nodeUpdateNode took", ((new Date()).getTime() - start), "ms");
+	    try {
+	      var diff = ddInstance.nodeUpdateNode($dom[0], $template[0], {
+	        test: false,
+	        errorOnFail: true,
+	        ignoreContainer: true,
+	        returnDiff: true
+	      });
+	    } catch (e) {
+	      alert("Diffing failed, please report this to oliver.foster@kineo.com");
+	    }
+
+	    console.log("DOMDiffer - nodeUpdateNode took", ((new Date()).getTime() - start), "ms", "performed", diff.length, "changes");
+	    
    });
 
 });
+
 
 
 CSS

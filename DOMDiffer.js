@@ -328,6 +328,10 @@
             var destinationStartVNode = this._fVNodeToVNode(fVDestination);
             var orderedMatches = this._rebuildDestinationFromSourceMatches(destinationStartVNode, sourceMatches, uidIndexes);
 
+            if (options.ignoreContainer === true && orderedMatches[0] && orderedMatches[0].sourceParentUid === -1) {
+                orderedMatches.splice(0,1);
+            }
+
             sourceMatches = undefined;
 
             var differential = [].concat(
