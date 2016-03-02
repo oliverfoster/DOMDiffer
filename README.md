@@ -2,6 +2,27 @@
 
 React-style DOM updates for MVC+Template frameworks. ie8+ compatible.
 
+#####Inclusion - Global
+```html
+<script src="DOMDiffer.js"></script>
+```
+```javascript
+var ddInstance = new DOMDiffer({
+  /* options here */
+});
+```
+#####Inclusion - Require
+```html
+<script src="require.js"></script>
+```
+```javascript
+require(['./DOMDiffer'], function(DOMDiffer) {
+  var ddInstance = new DOMDiffer({
+    /* options here */
+  });
+});
+```
+
 #####Simple example:
 ```javascript
 
@@ -11,10 +32,12 @@ require(['DOMDiffer'], function(DOMDiffer) {
     /* options here */
   });
 
-  var renderedTemplate = document.getElementById("node2"); //just an example
+  var renderedTemplateString = '<div class="class1"></div>';
+  var templateNode = ddInstance.stringToNode(renderedTemplateString);
+
   var nodeInDocument = document.getElementById("node1");
   
-  ddInstance.nodeUpdateNode( nodeInDocument, renderedTemplate );
+  ddInstance.nodeUpdateNode( nodeInDocument, templateNode );
   
 });
 
@@ -30,10 +53,12 @@ require(['DOMDiffer'], function(DOMDiffer) {
     /* options here */
   });
   
-  var renderedTemplate = document.getElementById("node2"); //just an example
+  var renderedTemplateString = '<div class="class1"></div>';
+  var templateNode = ddInstance.stringToNode(renderedTemplateString);
+
   var nodeInDocument = document.getElementById("node1");
 
-  var diff = ddInstance.nodesDiff( nodeInDocument, renderedTemplate );
+  var diff = ddInstance.nodesDiff( nodeInDocument, templateNode );
   ddInstance.nodeApplyDiff( nodeInDocument, diff);
   
 
@@ -51,10 +76,12 @@ require(['DOMDiffer'], function(DOMDiffer) {
     /* options here */
   });
   
-  var renderedTemplate = document.getElementById("node2"); //just an example
+  var renderedTemplateString = '<div class="class1"></div>';
+  var templateNode = ddInstance.stringToNode(renderedTemplateString);
+
   var nodeInDocument = document.getElementById("node1");
   
-  var vNodeRenderedTemplate = ddInstance.nodeToVNode(renderedTemplate);
+  var vNodeRenderedTemplate = ddInstance.nodeToVNode(templateNode);
   var vNodeNodeInDocument = ddInstance.nodeToVNode(nodeInDocument);
 
   var diff = ddInstance.vNodesDiff( vNodeInDocument, vNodeRenderedTemplate );
@@ -107,4 +134,5 @@ require(['DOMDiffer'], function(DOMDiffer) {
 | ``vNodeToOuterVNode(vNode, options);`` | ``Object`` | Returns ``vNode`` without the children. Use ```{performOnVNode:true}``` to override the default behaviour and return a clone instead |
 | ``nodeToOuterVNode(vNode);`` | ``Object`` | Returns a ``vNode`` of ``node`` without the children |
 | ``nodeReplaceChildren(node1, node2);`` | ``undefined`` | Removes the children from ``node1`` and moves the children from ``node2`` into it |
+| ``stringToNode(htmlString);`` | ``Node`` | Turns a string into a DOM node |
 | ``nodeUpdateNode(node1, node2, options);`` | ``Object`` | Update ``node1`` from ``node2``. ``{test: true, errorOnFail: true, returnVNode: true}`` Returns ``vNode`` or ``DOMDiffer`` instance. Can test output and error on failure |
