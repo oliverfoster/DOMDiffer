@@ -276,10 +276,6 @@
         //9. return finished differential
         _fVNodesDiff: function _fVNodesDiff(fVSource, fVDestination, options) {
 
-            options = options || {
-                diffStyle: "fast"
-            };
-
             //create editable arrays to preserve original arrays
             var fVSource2 = fVSource.slice(0);
             var fVDestination2 = fVDestination.slice(0);
@@ -301,7 +297,7 @@
             fVSource2 = undefined;
             fVDestination2 = undefined;
 
-            this._expandMatchDifferencesAndStripNodes(sourceMatches, uidIndexes);
+            this._expandMatchDifferencesAndStripNodes(sourceMatches, uidIndexes, options);
 
             var destinationStartVNode = this._fVNodeToVNode(fVDestination);
             var orderedMatches = this._rebuildDestinationFromSourceMatches(destinationStartVNode, sourceMatches, uidIndexes);
@@ -673,10 +669,10 @@
         },
 
         //iterate through all of the matches
-        _expandMatchDifferencesAndStripNodes: function _expandMatchDifferencesAndStripNodes(sourceMatches, uidIndexes) {
+        _expandMatchDifferencesAndStripNodes: function _expandMatchDifferencesAndStripNodes(sourceMatches, uidIndexes, options) {
             for (var i = 0, l = sourceMatches.length; i < l; i++) {
                 var diff = sourceMatches[i];
-                this._expandDifferences(diff, uidIndexes);
+                this._expandDifferences(diff, uidIndexes, options);
                 delete diff.source;
                 delete diff.destination;
             }
@@ -684,12 +680,14 @@
 
         //add attributes to the match to express the differences between each pair
         //this makes each match-pair into a match-diff
-        _expandDifferences: function _expandDifferences(match, uidIndexes) {
+        _expandDifferences: function _expandDifferences(match, uidIndexes, options) {
 
             if (match.changeRemove || match.changeAdd) return;
 
             var source = match.source;
             var destination = match.destination;
+
+            if (source.parentUid === -1 && (options.ignoreContainer || this.options.ignoreContainer) ) return;
 
             if (source.deep !== destination.deep
                 || source.depth !== destination.depth) {
@@ -1339,27 +1337,34 @@
             } 
         },
 
-        nodesAreEqual: function nodesAreEqual(node1, node2, forDebug) {
+        nodesAreEqual: function nodesAreEqual(node1, node2, options) {
 
             var vNode1 = nodeToVNode(node1);
             var vNode2 = nodeToVNode(node2);
 
-            return this.vNodesAreEqual(vNode1, vNode2, forDebug);
+            return this.vNodesAreEqual(vNode1, vNode2, options);
 
         },
 
-        vNodesAreEqual: function vNodesAreEqual(vNode1, vNode2, forDebug) {
+        vNodesAreEqual: function vNodesAreEqual(vNode1, vNode2, options) {
 
-            var rate = this._rateCompare(vNode1, vNode2);
-            if (rate !== 1) {
-                if (forDebug) debugger;
-                return false;
+            options = options || {};
+
+            var rate;
+            if (vNode1.parentUid === -1 && (options.ignoreContainer || this.options.ignoreContainer)) {
+                rate = 1;
+            } else {
+                rate = this._rateCompare(vNode1, vNode2);
+                if (rate !== 1) {
+                    if (options.forDebug) debugger;
+                    return false;
+                }
             }
 
             switch (vNode1.nodeType) {
             case 1:
                 for (var i = 0, l = vNode1.childNodes.length; i < l; i++) {
-                    if (!this.vNodesAreEqual(vNode1.childNodes[i], vNode2.childNodes[i], forDebug)) {
+                    if (!this.vNodesAreEqual(vNode1.childNodes[i], vNode2.childNodes[i], options)) {
                         return false;
                     }
                 }
@@ -1376,16 +1381,16 @@
             var vNode1 = this.nodeToVNode(DOMNode1);
             var vNode2 = this.nodeToVNode(DOMNode2);
 
-            var diff = this.vNodesDiff(vNode1, vNode2);
+            var diff = this.vNodesDiff(vNode1, vNode2, options);
 
             this.vNodeDiffApply(vNode1, diff);
 
             if (options.test) {
                 var vNode1Reread = this.nodeToVNode(DOMNode1);
 
-                var updatedVSRereadUpdated = this.vNodesAreEqual(vNode1, vNode1Reread, true);
-                var updatedVSOriginal = this.vNodesAreEqual(vNode1, vNode2, true);
-                var rereadUpdatedVSOriginal = this.vNodesAreEqual(vNode1Reread, vNode2, true);
+                var updatedVSRereadUpdated = this.vNodesAreEqual(vNode1, vNode1Reread, options);
+                var updatedVSOriginal = this.vNodesAreEqual(vNode1, vNode2, options);
+                var rereadUpdatedVSOriginal = this.vNodesAreEqual(vNode1Reread, vNode2, options);
 
                 if (!updatedVSRereadUpdated 
                     || !updatedVSOriginal
