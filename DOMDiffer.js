@@ -1,4 +1,4 @@
-//https://github.com/oliverfoster/DOMDiffer 2016-02-23
+//https://github.com/oliverfoster/DOMDiffer 2016-03-02
 
 // Uses CommonJS, AMD or browser globals to register library
 (function (root, factory) {
