@@ -718,10 +718,16 @@
                 //ignore whitespace changes
                 if (this.options.ignoreWhitespace) {
                     if (source.trimmed !== destination.trimmed && source.trimmed !== "") {
-                        if (source.data !== destination.data) match.changeData = destination.data;
+                        if (source.data !== destination.data) {
+                            match.changeData = destination.data;
+                            match.trimmed = destination.trimmed;
+                        }
                     }
                 } else {
-                    if (source.data !== destination.data) match.changeData = destination.data;
+                    if (source.data !== destination.data) {
+                        match.changeData = destination.data;
+                        match.trimmed = destination.trimmed;
+                    }
                 }
 
                 if (match.changeData) match.equal = false;
@@ -1143,6 +1149,7 @@
                     }
 
                     vNode.data = diff.changeData;
+                    vNode.trimmed = diff.trimmed;
                     
                 }
 
