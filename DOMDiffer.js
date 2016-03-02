@@ -614,17 +614,22 @@
                     case 3:
                         vNode.data = source.data;
                         vNode.nodeType = source.nodeType;
+                        vNode.nodeName = source.nodeName;
+                        vNode.trimmed = source.trimmed;
                     }
                     vNode.uid = newSourceUid;
                     vNode.parentUid = newSourceParentUid;
 
                     var diffObj = {
                         changeAdd: true,
+                        changeLocation: true,
                         destination: destination,
                         nodeType: destination.nodeType,
                         destinationUid: oldDestionationUid,
                         destinationParentUid: oldDestinationParentUid,
                         relocateIndex: destination.index,
+                        depth: destination.depth,
+                        deep: destination.deep,
                         changeIndex: true,
                         source: source,
                         vNode: vNode,
@@ -672,8 +677,8 @@
             for (var i = 0, l = sourceMatches.length; i < l; i++) {
                 var diff = sourceMatches[i];
                 this._expandDifferences(diff, uidIndexes);
-                /*delete diff.source;
-                delete diff.destination;*/
+                delete diff.source;
+                delete diff.destination;
             }
         },
 
@@ -686,6 +691,14 @@
             var source = match.source;
             var destination = match.destination;
 
+            if (source.deep !== destination.deep
+                || source.depth !== destination.depth) {
+                    match.changeLocation = true;
+                    match.depth = destination.depth;
+                    match.deep = destination.deep;
+                    match.equal = false;
+            }
+
             switch(match.nodeType) {
             case 1:
                 if (source.nodeName !== destination.nodeName) match.changeNodeName = destination.nodeName;
@@ -694,7 +707,6 @@
                 var changeClasses = this._diffKeys(source.classes, destination.classes);
                 if (!changeClasses.isEqual) match.changeClasses = changeClasses;
                 if (source.id !== destination.id) match.changeId = destination.id;
-
 
                 if (match.changeId !== undefined
                     || match.changeNodeName !== undefined
@@ -816,6 +828,7 @@
                     || (diff.changeClasses)
                     || diff.changeParent !== undefined
                     || diff.changeIndex !== undefined
+                    || diff.changeLocation
                     )) {
                     diffs.push(diff);
                 }
@@ -830,6 +843,7 @@
                     || diff.changeAdd
                     || diff.changeParent !== undefined
                     || diff.changeIndex !== undefined
+                    || diff.changeLocation
                     )) {
                     diffs.push(diff);
                 }
@@ -1070,6 +1084,8 @@
                         parentVNode.childNodes[r].index = r;
                     }
 
+                    if (diff.sourceUid === 23) debugger;
+
                     if (diff.relocateIndex === vNode.index || parentVNode.childNodes.length === 1) {
                         if (!diff.changeAttributes
                             && !diff.changeClass
@@ -1077,9 +1093,11 @@
                             && diff.changeData === undefined
                             && !diff.changeParent
                             && !diff.changeAdd
-                            && !diff.changeRemove) {
+                            && !diff.changeRemove
+                            && !diff.changeLocation) {
                                 //remove diff if only changing index
                                 diff.redundant = true;
+                                vNode.index = diff.relocateIndex;
                         }
                     } else {
 
@@ -1108,6 +1126,11 @@
 
                         parentVNode.childNodes.splice(vNode.index,1);
                         parentVNode.childNodes.splice(diff.relocateIndex,0,vNode);
+
+                        //reindex vnodes as they can change around
+                        for (var r = 0, rl = parentVNode.childNodes.length; r < rl; r++) {
+                            parentVNode.childNodes[r].index = r;
+                        }
                     }
 
                 }
@@ -1121,6 +1144,13 @@
 
                     vNode.data = diff.changeData;
                     
+                }
+
+                if (diff.changeLocation) {
+
+                    vNode.depth = diff.depth;
+                    vNode.deep = diff.deep;
+
                 }
 
             }
@@ -1330,6 +1360,34 @@
             }
 
             return true;
+
+        },
+
+        nodeUpdateNode: function(DOMNode1, DOMNode2, options) {
+            options = options || {};
+
+            var vNode1 = this.nodeToVNode(DOMNode1);
+            var vNode2 = this.nodeToVNode(DOMNode2);
+
+            var diff = this.vNodesDiff(vNode1, vNode2);
+
+            this.vNodeDiffApply(vNode1, diff);
+
+            if (options.test) {
+                var vNode1Reread = this.nodeToVNode(DOMNode1);
+
+                var updatedVSRereadUpdated = this.vNodesAreEqual(vNode1, vNode1Reread, true);
+                var updatedVSOriginal = this.vNodesAreEqual(vNode1, vNode2, true);
+                var rereadUpdatedVSOriginal = this.vNodesAreEqual(vNode1Reread, vNode2, true);
+
+                if (!updatedVSRereadUpdated 
+                    || !updatedVSOriginal
+                    || !rereadUpdatedVSOriginal) {
+                    console.log("failed update");
+                }
+            }
+
+
 
         }
 
