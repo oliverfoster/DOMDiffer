@@ -118,7 +118,7 @@
             return vNode;
         },
 
-        _vNodeAttributes: function(DOMNode, vNode) {
+        _vNodeAttributes: function _vNodeAttributes(DOMNode, vNode) {
             //build vNode attributes
             var nodeAttributes = DOMNode.attributes;
             var vNodeAttributes = vNode.attributes;
@@ -180,7 +180,7 @@
 
         },
 
-        _injectSpecialAttributes: function(DOMNode, vNode) {
+        _injectSpecialAttributes: function _injectSpecialAttributes(DOMNode, vNode) {
             var vNodeAttributes = vNode.attributes;
 
             switch (vNode.nodeName) {
@@ -190,7 +190,7 @@
             }
         },
 
-        _vNodeChildren: function(DOMNode, vNode, options) {
+        _vNodeChildren: function _vNodeChildren(DOMNode, vNode, options) {
             var allowedSubTree = this._isAllowedSubTree(vNode);
             if (!allowedSubTree) return;
 
@@ -1345,7 +1345,7 @@
 
         },
 
-        nodeUpdateNode: function(DOMNode1, DOMNode2, options) {
+        nodeUpdateNode: function nodeUpdateNode(DOMNode1, DOMNode2, options) {
             options = options || {};
 
             var vNode1 = this.nodeToVNode(DOMNode1);
@@ -1381,7 +1381,7 @@
 
         },
 
-        stringToNode: function(htmlString) {
+        stringToNode: function stringToNode(htmlString) {
 
             var container = document.createElement("div");
             container.innerHTML = htmlString;
