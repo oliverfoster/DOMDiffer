@@ -33,7 +33,7 @@ var changes = [
 ];
 
 
-var testDelay = 1;
+var testDelay = 500;
 
 function startTesting() {
 
