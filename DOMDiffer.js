@@ -707,8 +707,8 @@
                 break;
             }
 
-            delete diff.source;
-            delete diff.destination;
+            delete match.source;
+            delete match.destination;
 
         },
 
