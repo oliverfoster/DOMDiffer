@@ -1,0 +1,64 @@
+<div>
+{{~#if_equals change "simple-empty"~}}{{~/if_equals~}}
+{{~#if_equals change "simple-one-div"~}}<div></div>{{~/if_equals~}}
+{{~#if_equals change "simple-one-div-class"~}}<div class="test"></div>{{~/if_equals~}}
+{{~#if_equals change "simple-one-div-class-id"~}}<div id="no" class="test"></div>{{~/if_equals~}}
+{{~#if_equals change "simple-one-div-class-id-attribute"~}}<div id="no" class="test" something="nothing"></div>{{/if_equals~}}
+{{~#if_equals change "simple-nestinnew"~}}<div id="new"><div id="no" class="test" something="nothing"></div></div>{{/if_equals~}}
+{{~#if_equals change "simple-nestinnew-duplicate-spacing"~}}<div id="new">
+<div id="no" class="test" something="nothing"></div>
+<div id="no" class="test" something="nothing"></div>
+</div>{{/if_equals~}}
+{{~#if_equals change "complex-general-new-nesting"~}}<div id="new">
+<div id="no" class="test" something="nothing">
+	<div something="nothing">
+		<a id="no" class="test" something="nothing"></a>
+	</div>
+</div>
+<div id="no" class="test" something="nothing"></div>
+</div>{{/if_equals~}}
+{{~#if_equals change "complex-general-new-nesting-move"~}}<div id="new">
+<div id="no" class="test" something="nothing">
+	<div something="nothing">
+		<a id="no" class="test" something="nothing"></a>
+	</div>
+	<div id="no" class="test" something="nothing"></div>
+</div>
+
+</div>{{/if_equals~}}
+{{~#if_equals change "complex-flatten"~}}<div id="new">
+<div id="no" class="test" something="nothing"></div>
+<div id="no" class="test" something="nothing">
+	<div something="nothing">
+		
+	</div>
+	
+</div>
+<a id="no" class="test" something="nothing"></a>
+
+</div>{{/if_equals~}}
+{{~#if_equals change "complex-relocate"~}}
+<a id="no" class="test" something="nothing"><div id="new">
+<div id="no" class="test" something="nothing"></div>
+<div id="no" class="test" something="nothing">
+	<div something="nothing">
+		
+	</div>
+	
+</div>
+</div></a>
+
+{{/if_equals~}}
+{{~#if_equals change "complex-change-classes"~}}
+<a id="no" class="test test5" something="nothing"><div id="new">
+<div id="no" class="test test2" something="nothing"></div>
+<div id="no" class="test test3" something="nothing">
+	<div something="nothing">
+		
+	</div>
+	
+</div>
+</div></a>
+
+{{/if_equals~}}
+</div>
