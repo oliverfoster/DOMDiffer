@@ -310,13 +310,16 @@
             var sourceMatches = [];
             var matchIndex = {};
 
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches, matchIndex);
+            var uidIndexes = {
+                bySourceUid: {},
+                byDestinationUid: {}
+            };
+
+            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches, matchIndex, uidIndexes);
 
             matchIndex = undefined;
 
-            var removes = this._createRemoveMatches(fVSource2, sourceMatches);
-
-            var uidIndexes = this._makeUidIndexes(sourceMatches);
+            var removes = this._createRemoveMatches(fVSource2, sourceMatches, uidIndexes);
 
             var adds = this._createAddMatches(fVDestination2, sourceMatches, uidIndexes);
 
@@ -355,7 +358,7 @@
 
         //compare each source vnode with each destination vnode
         //when a match is found, remove both the source and destination from their original flattened arrays and add a match diff object
-        _compareAndRemoveFVNodes: function _compareAndRemoveFVNodes(fVSource, fVDestination, minRate, sourceMatches, matchIndex) {
+        _compareAndRemoveFVNodes: function _compareAndRemoveFVNodes(fVSource, fVDestination, minRate, sourceMatches, matchIndex, uidIndexes) {
             if (fVSource.length === 0 || fVDestination.length === 0) return;
 
             //always remove root containers as matches first
@@ -378,6 +381,8 @@
                     rate: rate
                 };
                 sourceMatches.push(diffObj);
+                uidIndexes.bySourceUid[diffObj.sourceUid] = diffObj;
+                uidIndexes.byDestinationUid[diffObj.destinationUid] = diffObj;
             }
 
             var fIndex = fVSource.length-1;
@@ -424,6 +429,8 @@
                                 rate: rate
                             };
                             sourceMatches.push(diffObj);
+                            uidIndexes.bySourceUid[diffObj.sourceUid] = diffObj;
+                            uidIndexes.byDestinationUid[diffObj.destinationUid] = diffObj;
                             maxRating = 0;
                             maxRated = undefined;
                             maxRatedIndex = undefined;
@@ -451,6 +458,8 @@
                         rate: maxRating
                     };
                     sourceMatches.push(diffObj);
+                    uidIndexes.bySourceUid[diffObj.sourceUid] = diffObj;
+                    uidIndexes.byDestinationUid[diffObj.destinationUid] = diffObj;
                     maxRating = 0;
                     maxRated = undefined;
                     maxRatedIndex = undefined;
@@ -534,7 +543,7 @@
         },
 
         //manufacture 'matches' for the items to remove from the source tree
-        _createRemoveMatches: function _createRemoveMatches(fVSource2, sourceMatches) {
+        _createRemoveMatches: function _createRemoveMatches(fVSource2, sourceMatches, uidIndexes) {
             var removes = [];
             for (var i = fVSource2.length-1, l = -1; i > l; i--) {
                 var source = fVSource2[i];
@@ -546,6 +555,8 @@
                     sourceParentUid: source.parentUid,
                 };
                 sourceMatches.push(diffObj);
+                uidIndexes.bySourceUid[diffObj.sourceUid] = diffObj;
+                uidIndexes.byDestinationUid[diffObj.destinationUid] = diffObj;
                 removes.push(diffObj);
                 fVSource2.splice(i,1);
             }
@@ -657,30 +668,6 @@
             }
 
             return addMatches;
-        },
-
-        //index all of the match nodes by their source and destination uids
-        _makeUidIndexes: function _makeUidIndexes(sourceMatches) {
-            var uidIndexes = {
-                bySourceUid: {},
-                byDestinationUid: {}
-            };
-            var bySourceUid = uidIndexes.bySourceUid;
-            var byDestinationUid = uidIndexes.byDestinationUid;
-
-            for (var i = 0, diff; diff = sourceMatches[i++];) {
-                //var diff = sourceMatches[i];
-                if (diff.sourceUid !== undefined) {
-                    bySourceUid[diff.sourceUid] = diff;
-                }
-                if (diff.destinationUid !== undefined) {
-                    byDestinationUid[diff.destinationUid] = diff;
-                }
-                if (diff.add) {
-                    diff.sourceParentUid = byDestinationUid[diff.destination.parentUid].sourceUid;
-                }
-            }
-            return uidIndexes;
         },
 
         //iterate through all of the matches
