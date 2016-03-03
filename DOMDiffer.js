@@ -271,18 +271,21 @@
         },
 
         //flatten a vnode
-        _vNodeToFVNode: function _vNodeToFVNode(vNode, rtn) {
+        _vNodeToFVNode: function _vNodeToFVNode(vNode, rtn, index) {
+            index = index || {};
             rtn = rtn || [];
             switch (vNode.nodeType) {
             case 1:
                 rtn.push(vNode);
+                index[vNode.uid] = vNode;
                 var childNodes = vNode.childNodes;
                 for (var i = 0, l = childNodes.length; i < l; i++) {
-                    this._vNodeToFVNode(childNodes[i], rtn);
+                    this._vNodeToFVNode(childNodes[i], rtn, index);
                 }
                 break;
             case 3:
                 rtn.push(vNode);
+                index[vNode.uid] = vNode;
                 break;
             }
             return rtn;
@@ -291,9 +294,7 @@
         //create a differential of flattened vnodes
         //1. match source nodes to the best destination node
         //2. create matches to remove all left-over source nodes with no matches
-        //3. index each match by it's source and destination
         //4. create matches to add all left-over destination nodes
-        //5. expand the differences between each match
         //6. find the start destination node
         //7. rebuild destination tree from source tree using added nodes where necessary and returning the order of the differences
         //8. use the differential to turn a copy of the source tree into the destination tree, removing redundant diffs on the way
@@ -308,30 +309,23 @@
 
             //try to match containers
             var sourceMatches = [];
-            var matchIndex = {};
-
             var uidIndexes = {
                 bySourceUid: {},
                 byDestinationUid: {}
             };
 
-            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches, matchIndex, uidIndexes);
-
-            matchIndex = undefined;
-
+            this._compareAndRemoveFVNodes(fVSource2, fVDestination2, 0.20, sourceMatches, uidIndexes, options);
             var removes = this._createRemoveMatches(fVSource2, sourceMatches, uidIndexes);
-
-            var adds = this._createAddMatches(fVDestination2, sourceMatches, uidIndexes);
+            this._createAddMatches(fVDestination2, sourceMatches, uidIndexes);
 
             fVSource2 = undefined;
             fVDestination2 = undefined;
-
-            this._expandMatchDifferencesAndStripNodes(sourceMatches, uidIndexes, options);
 
             var destinationStartVNode = this._fVNodeToVNode(fVDestination);
             var orderedMatches = this._rebuildDestinationFromSourceMatches(destinationStartVNode, sourceMatches, uidIndexes);
 
             if (options.ignoreContainer === true && orderedMatches[0] && orderedMatches[0].sourceParentUid === -1) {
+                //remove container from diff
                 orderedMatches.splice(0,1);
             }
 
@@ -358,7 +352,7 @@
 
         //compare each source vnode with each destination vnode
         //when a match is found, remove both the source and destination from their original flattened arrays and add a match diff object
-        _compareAndRemoveFVNodes: function _compareAndRemoveFVNodes(fVSource, fVDestination, minRate, sourceMatches, matchIndex, uidIndexes) {
+        _compareAndRemoveFVNodes: function _compareAndRemoveFVNodes(fVSource, fVDestination, minRate, sourceMatches, uidIndexes, options) {
             if (fVSource.length === 0 || fVDestination.length === 0) return;
 
             //always remove root containers as matches first
@@ -377,9 +371,10 @@
                     sourceIndex: source.index,
                     destinationUid: destination.uid,
                     destinationParentUid: destination.parentUid,
-                    equal: rate === 1,
+                    isEqual: rate === 1,
                     rate: rate
                 };
+                this._expandDifferences(diffObj, options);
                 sourceMatches.push(diffObj);
                 uidIndexes.bySourceUid[diffObj.sourceUid] = diffObj;
                 uidIndexes.byDestinationUid[diffObj.destinationUid] = diffObj;
@@ -404,10 +399,7 @@
                     var destination = fVDestination[dIndex];
                     var destinationUid = destination.uid;
 
-                    matchIndex[sourceUid] = matchIndex[sourceUid] || {};
-                    matchIndex[sourceUid][destinationUid] = matchIndex[sourceUid][destinationUid] || this._rateCompare(destination, source);
-
-                    var rate = matchIndex[sourceUid][destinationUid];
+                    var rate = this._rateCompare(destination, source);
                     if (rate > maxRating && rate >= minRate) {
                         rated.push(destination);
                         maxRated = destination;
@@ -425,9 +417,10 @@
                                 sourceIndex: source.index,
                                 destinationUid: destination.uid,
                                 destinationParentUid: destination.parentUid,
-                                equal: rate === 1,
+                                isEqual: rate === 1,
                                 rate: rate
                             };
+                            this._expandDifferences(diffObj, options);
                             sourceMatches.push(diffObj);
                             uidIndexes.bySourceUid[diffObj.sourceUid] = diffObj;
                             uidIndexes.byDestinationUid[diffObj.destinationUid] = diffObj;
@@ -454,9 +447,10 @@
                         sourceIndex: source.index,
                         destinationUid: maxRated.uid,
                         destinationParentUid: maxRated.parentUid,
-                        equal: rate === 1,
+                        isEqual: rate === 1,
                         rate: maxRating
                     };
+                    this._expandDifferences(diffObj, options);
                     sourceMatches.push(diffObj);
                     uidIndexes.bySourceUid[diffObj.sourceUid] = diffObj;
                     uidIndexes.byDestinationUid[diffObj.destinationUid] = diffObj;
@@ -480,39 +474,28 @@
             case 1:
                 
                 value+=vsource.id===vdestination.id?3:0;
-                value+=vsource.depth === vdestination.depth ? 3 : 0;
+                value+=vsource.depth === vdestination.depth? 3 : 0;
                 value+=this._keyValueCompare(vsource.classes, vdestination.classes) * 3;
 
                 value+=this._keyValueCompare(vsource.attributes, vdestination.attributes) * 2;
 
                 value+=vsource.nodeName === vdestination.nodeName?1:0;
 
-                value+=(vsource.childNodes.length !== 0) === (vdestination.childNodes.length !== 0) ? 1 : 0;
-                value+=vsource.childNodes.length === vdestination.childNodes.length ? 1 : 0;
+                value+=(vsource.childNodes.length !== 0) === (vdestination.childNodes.length !== 0)? 1 : 0;
+                value+=vsource.childNodes.length === vdestination.childNodes.length? 1 : 0;
                 
-                value+=vsource.deep === vdestination.deep ? 1 : 0;
-                value+=vsource.index === vdestination.index ? 1 : 0;
+                value+=vsource.deep === vdestination.deep? 1 : 0;
+                value+=vsource.index === vdestination.index? 1 : 0;
 
                 rate = (value / 16) || -1;
 
                 break;
             case 3:
-                value+=vsource.depth === vdestination.depth ? 3 : 0;
-                value+=vsource.index === vdestination.index ? 1 : 0;
+                value+=vsource.depth === vdestination.depth? 3 : 0;
+                value+=vsource.index === vdestination.index? 1 : 0;
 
-                //ignore whitespace changes
-                if (this.options.ignoreWhitespace) {
-                    if (vsource.trimmed === vdestination.trimmed && vsource.trimmed === "") {
-                        value+=vsource.trimmed === vdestination.trimmed ? 2 : 0;
-                        value+=1;
-                    } else {
-                        value+=vsource.trimmed === vdestination.trimmed ? 2 : 0;
-                        value+=vsource.data === vdestination.data ? 1 : 0;
-                    }
-                } else {
-                    value+=vsource.trimmed === vdestination.trimmed ? 2 : 0;
-                    value+=vsource.data === vdestination.data ? 1 : 0;
-                }
+                value+=vsource.trimmed === vdestination.trimmed? 2 : 0;
+                value+=vsource.data === vdestination.data? 1 : 0;
                 
                 rate = (value / 7) || -1;
             }
@@ -583,7 +566,6 @@
 
             //create matches for new objects to that sourceUids don't conflict with preexisting sourceNodes
             //assign new item.sourceUids from the negative spectrum
-            var addMatches = [];
             var newSourceUids = -1;
             var translateOldDestionationUidToNewSourceUid = {};
             for (var i = 0, l = newDestinationRoots.length; i < l; i++) {
@@ -659,29 +641,18 @@
                         sourceParentUid: newSourceParentUid,
                         sourceIndex: source.index
                     }
-
                     sourceMatches.push(diffObj);
-                    addMatches.push(diffObj);
                     uidIndexes.bySourceUid[newSourceUid] = diffObj;
                     uidIndexes.byDestinationUid[oldDestionationUid] = diffObj;
                 }
             }
 
-            return addMatches;
-        },
-
-        //iterate through all of the matches
-        _expandMatchDifferencesAndStripNodes: function _expandMatchDifferencesAndStripNodes(sourceMatches, uidIndexes, options) {
-            for (var i = 0, diff; diff = sourceMatches[i++];) {
-                this._expandDifferences(diff, uidIndexes, options);
-                delete diff.source;
-                delete diff.destination;
-            }
         },
 
         //add attributes to the match to express the differences between each pair
         //this makes each match-pair into a match-diff
-        _expandDifferences: function _expandDifferences(match, uidIndexes, options) {
+        //strip DOMNodes
+        _expandDifferences: function _expandDifferences(match, options) {
 
             if (match.changeRemove || match.changeAdd) return;
 
@@ -695,7 +666,7 @@
                     match.changeLocation = true;
                     match.depth = destination.depth;
                     match.deep = destination.deep;
-                    match.equal = false;
+                    match.isEqual = false;
             }
 
             switch(match.nodeType) {
@@ -703,49 +674,41 @@
                 if (source.nodeName !== destination.nodeName) {
                     match.changeNodeName = true;
                     match.nodeName = destination.nodeName;
-                    match.equal = false;
+                    match.isEqual = false;
                 }
                 var changeAttributes = this._diffKeys(source.attributes, destination.attributes);
                 if (changeAttributes.isEqual === false) {
                     match.changeAttributes = true;
                     match.attributes = changeAttributes;
-                    match.equal = false;
+                    match.isEqual = false;
                 }
                 var changeClasses = this._diffKeys(source.classes, destination.classes);
                 if (changeClasses.isEqual === false) {
                     match.changeClasses = true;
                     match.classes = changeClasses;
-                    match.equal = false;
+                    match.isEqual = false;
                 }
                 if (source.id !== destination.id) {
                     match.changeId = true;
                     match.id = destination.id;
-                    match.equal = false;
+                    match.isEqual = false;
                 }
 
                 break;
             case 3:
-                //ignore whitespace changes
-                if (this.options.ignoreWhitespace) {
-                    if (source.trimmed !== destination.trimmed && source.trimmed !== "") {
-                        if (source.data !== destination.data) {
-                            match.changeData = true;
-                            match.data = destination.data;
-                            match.trimmed = destination.trimmed;
-                            match.equal = false;
-                        }
-                    }
-                } else {
-                    if (source.data !== destination.data) {
-                        match.changeData = true;
-                        match.data = destination.data;
-                        match.trimmed = destination.trimmed;
-                        match.equal = false;
-                    }
+
+                if (source.data !== destination.data) {
+                    match.changeData = true;
+                    match.data = destination.data;
+                    match.trimmed = destination.trimmed;
+                    match.isEqual = false;
                 }
 
                 break;
             }
+
+            delete diff.source;
+            delete diff.destination;
 
         },
 
@@ -815,7 +778,7 @@
 
                     var moveToSourceUid = uidIndexes.byDestinationUid[destinationParentVNode.uid].sourceUid;
                     //mark to move into a different parent
-                    diff.equal = false;
+                    diff.isEqual = false;
                     diff.changeParent = true;
                     diff.changeIndex = true;
                     //fetch source parent to relocate node to
@@ -831,7 +794,7 @@
                         diff.relocateDisplace = false;
                     }
 
-                    diff.equal = false;
+                    diff.isEqual = false;
                     diff.changeIndex = true;
                     diff.relocateIndex = newIndex;
                 }
@@ -839,7 +802,7 @@
 
             switch (diff.nodeType) {
             case 1:
-                if (diff.equal === false
+                if (diff.isEqual === false
                     || diff.changeAdd === true
                     || diff.changeId === true
                     || diff.changeNodeName === true
@@ -858,7 +821,7 @@
                 }
                 break;
             case 3:
-                if (diff.equal === false
+                if (diff.isEqual === false
                     || diff.changeData === true
                     || diff.changeAdd === true
                     || diff.changeParent === true
@@ -870,7 +833,7 @@
                 break;
             }
 
-            delete diff.equal;
+            delete diff.isEqual;
             delete diff.rate;
             delete diff.sourceIndex;
 
@@ -888,16 +851,11 @@
 
             if (options.performOnVNode !== true) startVNode = this._cloneObject(startVNode, {"DOMNode":true});
 
-            var fVStartNode = this._vNodeToFVNode(startVNode);
-            var differential2 = this._cloneObject(differential, {"DOMNode":true});
-
             var bySourceUid = {};
-            for (var i = 0, vStartNode; vStartNode = fVStartNode[i++];) {
-                if (bySourceUid[vStartNode.uid]) {
-                    throw "duplicate uid in differential";
-                }
-                bySourceUid[vStartNode.uid] = vStartNode;
-            }
+            var fVStartNode = [];
+            this._vNodeToFVNode(startVNode, fVStartNode, bySourceUid);
+
+            var differential2 = this._cloneObject(differential, {"DOMNode":true});
 
             for (var i = 0, diff; diff = differential2[i++];) {    
                 //var diff = differential2[i];
@@ -1217,14 +1175,13 @@
 
         //clone basic javascript Array, Object and primative structures
         _cloneObject: function _cloneObject(value, copy) {
-            if (typeof value === "object") {
-                if (value instanceof Array) {
-                    var rtn = [];
-                    for (var i = 0, l = value.length; i < l; i++) {
-                        rtn[i] = this._cloneObject(value[i], copy);
-                    }
-                    return rtn;
+            if (value instanceof Array) {
+                var rtn = [];
+                for (var i = 0, l = value.length; i < l; i++) {
+                    rtn[i] = this._cloneObject(value[i], copy);
                 }
+                return rtn;
+            } else if (value instanceof Object) {
                 var rtn = {};
                 for (var k in value) {
                     if (copy && copy[k]) {
