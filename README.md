@@ -141,4 +141,4 @@ require(['DOMDiffer'], function(DOMDiffer) {
 
 ####Test:
 
-[Simple jsfiddle](https://jsfiddle.net/b6Lf8n6h/)
+[Simple jsfiddle](https://jsfiddle.net/b6Lf8n6h/7/)
