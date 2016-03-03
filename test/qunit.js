@@ -33,7 +33,7 @@ var changes = [
 ];
 
 
-var testDelay = 500;
+var testDelay = 100;
 
 function startTesting() {
 
@@ -60,7 +60,7 @@ function startTesting() {
 var currentModule = "";
 
 function bindTestContext(moduleName, i, runAt) {
-    setTimeout(function() {
+    var test = function() {
         
         if (currentModule !== moduleName) {
             console.log("change module", moduleName);
@@ -74,7 +74,12 @@ function bindTestContext(moduleName, i, runAt) {
             }, assert);
         });
 
-    }, runAt);
+    };
+    if (runAt !== 0) {
+        setTimeout(test, runAt);
+    } else {
+        test();
+    }
 }
 
 var count = 1;
