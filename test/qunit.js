@@ -49,7 +49,7 @@ var changes = [
 ];
 
 
-var testDelay = 0;
+var testDelay = 1;
 
 function startTesting() {
 
@@ -99,6 +99,7 @@ function bindTestContext(moduleName, i, runAt) {
 }
 
 var count = 1;
+var longest = 0;
 function performDiff(context, assert) {
     var templateString = UnitTemplate(context);
     var templateNode = dd.stringToNode(templateString);
@@ -107,14 +108,16 @@ function performDiff(context, assert) {
     var start = (new Date()).getTime();
 
     //perform test
-    var diff = dd.nodeUpdateNode(diffed, templateNode, {test:true, forDebug: true, errorOnFail: true, ignoreContainer:true, returnDiff: true});
+    var diff = dd.nodeUpdateNode(diffed, templateNode, {test:false, forDebug: true, errorOnFail: true, ignoreContainer:true, returnDiff: true});
     
 
     //capture total elapsed time
     var time = (new Date()).getTime() - start;
     
     //console log and show changes
-    console.log(count++, context.change, diff);
+    if (time > longest) longest = time;
+    console.log(count++, context.change, time+"ms", diff.length+"diffs", diff);
+    console.log("longest", longest);
     template.innerHTML = diffed.outerHTML;
 
     //reply to test assert
