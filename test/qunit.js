@@ -1,5 +1,5 @@
-var output = $("#output")[0];
-var textArea = $("#outputtext textarea")[0];
+var diffed = $("#diffed")[0];
+var template = $("#template")[0];
 
 var dd = new DOMDiffer(); 
 var UnitTemplate;
@@ -29,11 +29,21 @@ var changes = [
     "complex-general-new-nesting",
     "complex-general-new-nesting-move",
     "complex-flatten",
-    "complex-change-classes"
+    "complex-change-classes",
+
+    "complex-narrative-1",
+    "complex-narrative-2",
+    "complex-narrative-3",
+
+    "complex-hotgraphic-1",
+    "complex-hotgraphic-2",
+    "complex-hotgraphic-3",
+    "complex-hotgraphic-4",
+    "complex-hotgraphic-5",
 ];
 
 
-var testDelay = 100;
+var testDelay = 1;
 
 function startTesting() {
 
@@ -87,12 +97,12 @@ function performDiff(context, assert) {
     var templateString = UnitTemplate(context);
     var templateNode = dd.stringToNode(templateString);
 
-    try {
+    //try {
         //capture start time
         var start = (new Date()).getTime();
 
         //perform test
-        var diff = dd.nodeUpdateNode(output, templateNode, {test:true, forDebug: true, errorOnFail: true, ignoreContainer:true, returnDiff: true});
+        var diff = dd.nodeUpdateNode(diffed, templateNode, {test:false, forDebug: false, errorOnFail: false, ignoreContainer:true, returnDiff: true});
         
 
         //capture total elapsed time
@@ -100,11 +110,11 @@ function performDiff(context, assert) {
         
         //console log and show changes
         console.log(count++, context.change, diff);
-        textArea.value = output.outerHTML;
+        template.innerHTML = diffed.outerHTML;
 
         //reply to test assert
         assert.ok(true, "passed in " + time + "ms, made " + diff.length + " changes. TEMPLATE: "+templateString);
-    } catch(e) {
+    /*} catch(e) {
         assert.ok(false, "errored failed to make identical differential");                
-    }
+    }*/
 }
