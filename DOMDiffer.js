@@ -101,7 +101,6 @@
             this._injectSpecialAttributes(DOMNode, vNode);
 
             if (!options.ignoreChildren) {
-                //this._vNodeChildren(DOMNode, vNode, options, context);
                 var allowedSubTree = this._isAllowedSubTree(vNode);
                 if (!allowedSubTree) return;
 
@@ -112,7 +111,8 @@
 
                 if (DOMNode.childNodes.length) deep++;
 
-                for (var i = 0, childNode; childNode = DOMNode.childNodes[i++];) {
+                for (var i = 0, l = DOMNode.childNodes.length; i < l; i++) {
+                    var childNode = DOMNode.childNodes[i];
                     var childNodeType = childNode.nodeType;
 
                     switch (childNodeType) {
@@ -208,16 +208,6 @@
             }
         },
 
-        _startsWith: function _startsWith(s,starter) {
-            for (var i = 0,cur_c; i < starter.length; i++) {
-                cur_c = starter[i];
-                if (s[i] !== starter[i]) {
-                  return false;
-                }
-            }
-            return true;
-        },
-
         _isAllowedAttribute: function _isAllowedAttribute(attribute) {
 
             var _ignoreAttributes = this._ignoreAttributes;
@@ -255,55 +245,6 @@
                 if (!vNodeAttributes["xmlns"]) vNodeAttributes["xmlns"] = svgNS;
                 break;
             }
-        },
-
-        _vNodeChildren: function _vNodeChildren(DOMNode, vNode, options, context) {
-            var allowedSubTree = this._isAllowedSubTree(vNode);
-            if (!allowedSubTree) return;
-
-            //capture deep from childNodes
-            var deep = 0;
-
-            var vChildNodes = vNode.childNodes;
-
-            if (DOMNode.childNodes.length) deep++;
-
-            for (var i = 0, childNode; childNode = DOMNode.childNodes[i++];) {
-                var childNodeType = childNode.nodeType;
-
-                switch (childNodeType) {
-                case 1:
-                    var childContext = {
-                        depth: vNode.depth+1, 
-                        index: i,
-                        uid: context.uid, // carry current uid count through
-                        parentUid: vNode.uid
-                    };
-                    var vChildNode = this.nodeToVNode(childNode, options, childContext);
-                    deep = deep+vChildNode.deep;
-                    context.uid = childContext.uid;
-                    break;
-                case 3:
-                    //add text node
-                    vChildNode = {
-                        DOMNode: childNode,
-                        nodeType: childNodeType,
-                        nodeName: childNode.nodeName,
-                        data: childNode.data,
-                        trimmed: this._trim(childNode.data),
-                        index: i,
-                        depth: vNode.depth+1,
-                        deep: 0,
-                        uid: context.uid++,
-                        parentUid: vNode.uid
-                    };
-                    break;
-                }
-
-                vChildNodes.push(vChildNode);
-            }
-
-            vNode.deep = deep;
         },
 
         _isAllowedSubTree: function _isAllowedSubTree(vNode) {
@@ -965,7 +906,6 @@
                 diff.changeIndex = true;
             }
 
-
             switch (diff.nodeType) {
             case 1:
                 if (!diff.isEqual
@@ -979,33 +919,13 @@
                     || diff.changeHierachyData
                     || diff.changeChildren
                     ) {
-                    diff.isIncluded = true;
                     diffs.push(diff);
                 }
-                var haveChildrenChanged = diff.changeChildren;
 
                 for (var i = 0, l = destinationStartVNode.childNodes.length; i < l; i++) {
                     var childNode = destinationStartVNode.childNodes[i];
                     var childDiffs = this._rebuildDestinationFromSourceMatches(childNode, sourceMatches, uidIndexes, destinationStartVNode, i);
                     diffs = diffs.concat(childDiffs);
-                }
-
-                if (!haveChildrenChanged && diff.changeChildren) {
-                    if (!diff.isIncluded) {
-                        diff.retrospectiveChildrenAdd = true;
-                        diff.isIncluded = true;
-                        //diffs.push(diff);
-                    }
-                    for (var i = 0, l = destinationStartVNode.childNodes.length; i < l; i++) {
-                        var childNode = destinationStartVNode.childNodes[i];
-                        var childDiff = uidIndexes.byDestinationUid[childNode.uid];
-                        if (!childDiff.isIncluded) {
-                            childDiff.isIncluded = true;
-                            childDiff.retrospectiveChildrenAdd2 = true;
-                            diff.retrospectiveChildrenAdd3 = true;
-                            //diffs = diffs.concat(childDiff);
-                        }
-                    }
                 }
 
                 break;
@@ -1017,7 +937,6 @@
                     || diff.changeIndex
                     || diff.changeHierachyData
                     ) {
-                    diff.isIncluded = true;
                     diffs.push(diff);
                 }
                 break;
@@ -1029,7 +948,7 @@
 
         _sanitizeDifferential: function _sanitizeDifferential(differential) {
             for (var i = 0, diff; diff = differential[i++];) {
-                delete diff.isIncluded;
+                //delete diff.isIncluded;
                 delete diff.source;
                 delete diff.destination;
                 delete diff.isEqual;
@@ -1104,10 +1023,6 @@
                 //change data
                 if (diff.changeData) {
                     this._changeData(diff, vNode, options);                    
-                }
-
-                if (diff.changeChildren && (diff.retrospectiveChildrenAdd)) {
-                    //this._reindexParentVNode(vNode, diffIndexBySourceUid, options);
                 }
 
                 diff.isComplete = true;
@@ -1369,60 +1284,6 @@
             vNode.index = diff.destinationIndex;
         },
 
-        _reindexParentVNode: function(parentVNode, diffIndexBySourceUid, options, notest) {
-             /* TO OVERCOME A MILD LOGIC ERROR IF NEED BE:
-                *  At this point a node can be a lot further forward than it should
-                *  This code is to correct for when new nodes are added in a position after 
-                *  a node that will be later removed. When the subsequent node is removed
-                *  all of the earlier add
-                */
-
-            var reIndexOnly = false;
-            for (var r = 0, rl = parentVNode.childNodes.length; r < rl; r++) {
-                var childNode = parentVNode.childNodes[r];
-                //reindex vnodes as they can change around
-                childNode.index = r;
-
-                if (reIndexOnly) continue;
-
-                var childDiff = diffIndexBySourceUid[childNode.uid];
-
-                //check if a differential was made for this node
-                //if there was it was a node that moved or changed
-                if (!childDiff ) continue;
-
-                if (childDiff.changeRemove) {
-                    reIndexOnly = true;
-                    continue;
-                }
-
-                //compare the destinationIndex with the current index
-                if (childDiff.destinationIndex === childNode.index) continue;
-
-                if (childDiff.changeParent && childDiff.newSourceParentUid !== childNode.parentUid) {
-                    reIndexOnly = true;
-                    continue;
-                }
-
-                if (childDiff.destinationIndex >= parentVNode.childNodes.length) continue;
-
-                this._relocateNode(childDiff, childNode, parentVNode, options);
-                //start again from affected nodes
-                r = childDiff.destinationIndex-2;
-            }
-
-            //TO TEST THE ABOVE CODE WAS SUCCESSFULL
-            /*if (options.test && options.performOnDOM && notest !== true) {
-                var reVNode = this.nodeToVNode(parentVNode.DOMNode);
-                var res = this.vNodesAreEqual(parentVNode, reVNode, {ignoreDepths: false, forDebug:true});
-                if (!res) debugger;
-            }
-
-            if (reIndexOnly) {
-                //console.log("reindexed", diffIndexBySourceUid[parentVNode.uid]);
-            }*/
-        },
-
         _changeData: function _changeData(diff, vNode, options) {
             if (options.performOnDOM) {
                 vNode.DOMNode.data = diff.data;
@@ -1588,7 +1449,7 @@
                     var ncrate = this._rateCompareNoChildren(vNode1, vNode2);
                     if (rate !== 1 && ncrate !== 1) {
                         if (options.forDebug) {
-                            console.error("nodes different at", vNode1, vNode2);
+                            console.log("nodes different at", vNode1, vNode2);
                             //debugger;
                         };
                         return false;
@@ -1598,7 +1459,7 @@
                     var ncrate = this._rateCompareNoChildren(vNode1, vNode2);
                     if (rate !== 1 && ncrate !== 1) {
                         if (options.forDebug) {
-                            console.error("nodes different at", vNode1, vNode2);
+                            console.log("nodes different at", vNode1, vNode2);
                             //debugger;
                         };
                         return false;
@@ -1610,7 +1471,7 @@
             case 1:
                 if (vNode1.childNodes.length !== vNode2.childNodes.length) {
                     if (options.forDebug) {
-                        console.error("childNodes different at", vNode1, vNode2);
+                        console.log("childNodes different at", vNode1, vNode2);
                         //debugger;
                     };
                     return false;
@@ -1635,10 +1496,11 @@
                 for (var i = 0, l = vNode.childNodes.length; i < l; i++) {
                     var childNode = vNode.childNodes[i];
                     if (childNode.index !== i) {
-                        console.error("indexes different at", vNode1);
-                        //debugger;
+                        console.log("indexes different at", vNode);
                     }
-                    this.vNodeCheckIndexes(childNode);
+                    if (childNode.nodeType === 3) {
+                        this.vNodeCheckIndexes(childNode);
+                    }
                 }
             }
 
@@ -1696,7 +1558,7 @@
                     if (options.errorOnFail) {
                         throw "failed update";
                     } else {
-                        console.error("failed update");
+                        console.log("failed update");
                         //debugger;
                     }
                 }
