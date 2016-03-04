@@ -31,25 +31,30 @@
                 && (ignoreAttributes === undefined || ignoreAttributes.length === 0)) return;
 
             var regex = "";
-            var lastIndex = ignoreAttributesWithPrefix.length-1;
-            for (var i = 0, l = ignoreAttributesWithPrefix.length; i < l; i++) {
-                var prefix = ignoreAttributesWithPrefix[i];
-                regex+="^"+this._escapeRegExp(prefix);
-                if (i !== lastIndex) {
-                    regex+="|";
+            var lastIndex;
+            if (ignoreAttributesWithPrefix && ignoreAttributesWithPrefix.length > 0) {
+                lastIndex = ignoreAttributesWithPrefix.length-1;
+                for (var i = 0, l = ignoreAttributesWithPrefix.length; i < l; i++) {
+                    var prefix = ignoreAttributesWithPrefix[i];
+                    regex+="^"+this._escapeRegExp(prefix);
+                    if (i !== lastIndex) {
+                        regex+="|";
+                    }
+                }
+
+                if (regex !== "" && ignoreAttributes && ignoreAttributes.length > 0) {
+                    regex += "|";
                 }
             }
 
-            if (regex !== "" && ignoreAttributes.length > 0) {
-                regex += "|";
-            }
-
-            lastIndex = ignoreAttributes.length-1;
-            for (var i = 0, l = ignoreAttributes.length; i < l; i++) {
-                var attribute = ignoreAttributes[i];
-                regex+=this._escapeRegExp(attribute);
-                if (i !== lastIndex) {
-                    regex+="|";
+            if (ignoreAttributes && ignoreAttributes.length > 0) {
+                lastIndex = ignoreAttributes.length-1;
+                for (var i = 0, l = ignoreAttributes.length; i < l; i++) {
+                    var attribute = ignoreAttributes[i];
+                    regex+=this._escapeRegExp(attribute);
+                    if (i !== lastIndex) {
+                        regex+="|";
+                    }
                 }
             }
 
@@ -929,7 +934,7 @@
                     if (diff.isIncluded === undefined) {
                         diff.retrospectiveChildrenAdd = true;
                         diff.isIncluded = true;
-                        diffs.push(diff);
+                        //diffs.push(diff);
                     }
                     for (var i = 0, l = destinationStartVNode.childNodes.length; i < l; i++) {
                         var childNode = destinationStartVNode.childNodes[i];
@@ -938,7 +943,7 @@
                             childDiff.isIncluded = true;
                             childDiff.retrospectiveChildrenAdd2 = true;
                             diff.retrospectiveChildrenAdd3 = true;
-                            diffs = diffs.concat(childDiff);
+                            //diffs = diffs.concat(childDiff);
                         }
                     }
                 }
@@ -1261,7 +1266,7 @@
                     && diff.changeAdd === undefined 
                     && diff.changeRemove === undefined
                     && diff.changeHierachyData === undefined
-                    && parentDiff.changeChildren === undefined) {
+                    && (parentDiff === undefined || parentDiff.changeChildren === undefined)) {
                         //remove diff if only changing index
                         diff.redundant = true;
                 }
