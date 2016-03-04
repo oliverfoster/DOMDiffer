@@ -43,7 +43,7 @@ var changes = [
 ];
 
 
-var testDelay = 1;
+var testDelay = 250;
 
 function startTesting() {
 
@@ -97,24 +97,21 @@ function performDiff(context, assert) {
     var templateString = UnitTemplate(context);
     var templateNode = dd.stringToNode(templateString);
 
-    //try {
-        //capture start time
-        var start = (new Date()).getTime();
+    //capture start time
+    var start = (new Date()).getTime();
 
-        //perform test
-        var diff = dd.nodeUpdateNode(diffed, templateNode, {test:false, forDebug: false, errorOnFail: false, ignoreContainer:true, returnDiff: true});
-        
+    //perform test
+    var diff = dd.nodeUpdateNode(diffed, templateNode, {test:true, forDebug: true, errorOnFail: true, ignoreContainer:true, returnDiff: true});
+    
 
-        //capture total elapsed time
-        var time = (new Date()).getTime() - start;
-        
-        //console log and show changes
-        console.log(count++, context.change, diff);
-        template.innerHTML = diffed.outerHTML;
+    //capture total elapsed time
+    var time = (new Date()).getTime() - start;
+    
+    //console log and show changes
+    console.log(count++, context.change, diff);
+    template.innerHTML = diffed.outerHTML;
 
-        //reply to test assert
-        assert.ok(true, "passed in " + time + "ms, made " + diff.length + " changes. TEMPLATE: "+templateString);
-    /*} catch(e) {
-        assert.ok(false, "errored failed to make identical differential");                
-    }*/
+    //reply to test assert
+    assert.ok(true, "passed in " + time + "ms, made " + diff.length + " changes. TEMPLATE: "+templateString);
+
 }

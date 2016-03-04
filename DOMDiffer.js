@@ -629,7 +629,7 @@
                 }
 
             }
-            
+
             fVSource2.splice(0, fVSource2.length)[0];
 
             return removes;
@@ -1502,7 +1502,7 @@
             } else {
                 if (options.ignoreDepths === true) {
                     rate = this._rateCompareNoDepth(vNode1, vNode2);
-                    ncrate = this._rateCompareNoChildren(vNode1, vNode2);
+                    var ncrate = this._rateCompareNoChildren(vNode1, vNode2);
                     if (rate !== 1 && ncrate !== 1) {
                         if (options.forDebug === true) {
                             console.error("nodes different at", vNode1, vNode2);
@@ -1512,7 +1512,7 @@
                     }
                 } else {
                     rate = this._rateCompare(vNode1, vNode2);
-                    ncrate = this._rateCompareNoChildren(vNode1, vNode2);
+                    var ncrate = this._rateCompareNoChildren(vNode1, vNode2);
                     if (rate !== 1 && ncrate !== 1) {
                         if (options.forDebug === true) {
                             console.error("nodes different at", vNode1, vNode2);
