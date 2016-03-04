@@ -188,23 +188,26 @@
                 var allowedAttribute = this._isAllowedAttribute(attributeName);
                 if (!allowedAttribute) continue;
 
-                switch (attributeName) {
-                case "class":
-                    var classes = attributeValue.split(" ");
-                    for (var c = 0, cl = classes.length; c < cl; c++) {
-                        var className = classes[c];
-                        if (className === "") continue;
-                        var allowedClass = this._isAllowedClass(className);
-                        if (!allowedClass) continue;
-                        vNodeClasses[className] = true;
-                    }
-                    continue;
-                case "id":
-                    vNode.id = attributeValue;
-                    continue;
-                }
-
                 vNodeAttributes[attributeName] = attributeValue;
+            }
+
+            var classValue = vNodeAttributes['class'];
+            if (classValue) {
+                var classes = classValue.split(" ");
+                for (var c = 0, cl = classes.length; c < cl; c++) {
+                    var className = classes[c];
+                    if (!className) continue;
+                    var allowedClass = this._isAllowedClass(className);
+                    if (!allowedClass) continue;
+                    vNodeClasses[className] = true;
+                }
+                delete vNodeAttributes['class'];
+            }
+
+            var idValue = vNodeAttributes.id;
+            if (idValue) {
+                vNode.id = idValue;
+                delete vNodeAttributes.id;
             }
         },
 
@@ -1497,6 +1500,7 @@
                     var childNode = vNode.childNodes[i];
                     if (childNode.index !== i) {
                         console.log("indexes different at", vNode);
+                        //debugger;
                     }
                     if (childNode.nodeType === 3) {
                         this.vNodeCheckIndexes(childNode);

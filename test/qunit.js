@@ -108,7 +108,7 @@ function performDiff(context, assert) {
     var start = (new Date()).getTime();
 
     //perform test
-    var diff = dd.nodeUpdateNode(diffed, templateNode, {test:true, forDebug: true, errorOnFail: true, ignoreContainer:true, returnDiff: true});
+    var diff = dd.nodeUpdateNode(diffed, templateNode, {test:false, forDebug: true, errorOnFail: true, ignoreContainer:true, returnDiff: true});
     
 
     //capture total elapsed time
