@@ -40,10 +40,16 @@ var changes = [
     "complex-hotgraphic-3",
     "complex-hotgraphic-4",
     "complex-hotgraphic-5",
+
+    "complex-accordion-1",
+    "complex-accordion-2",
+    "complex-accordion-3",
+    "complex-accordion-4",
+    "complex-accordion-5",
 ];
 
 
-var testDelay = 250;
+var testDelay = 0;
 
 function startTesting() {
 

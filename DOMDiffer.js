@@ -583,7 +583,7 @@
             var totalKeys = 0;
             for (var k1 in object1) {
                 totalKeys++;
-                if (object2.hasOwnProperty(k1)) {
+                if (object2.hasOwnProperty(k1) === true) {
                     if (object2[k1] === object2[k1]) {
                         matchingValues++;
                     }
@@ -626,6 +626,8 @@
                     deleteSourceRoots.push(source);
                     //only add source root deletion to output diff
                     removes.push(diffObj);
+                } else {
+                    diffObj.redundant = true;
                 }
 
             }
@@ -633,7 +635,6 @@
             fVSource2.splice(0, fVSource2.length)[0];
 
             return removes;
-        
         },
 
         //manufacture 'matches' for the items to add to the source tree from the destination
@@ -660,7 +661,7 @@
             var translateOldDestionationUidToNewSourceUid = {};
             for (var i = 0, l = newDestinationRoots.length; i < l; i++) {
 
-                var fVSource = this._vNodeToFVNode(this._cloneObject(newDestinationRoots[i], {"DOMNode": true})); //clone for new source nodes
+                var fVSource = this._vNodeToFVNode(newDestinationRoots[i]);
                 var fVDestination = this._vNodeToFVNode(newDestinationRoots[i]);
 
                 for (var c = 0, cl = fVDestination.length; c < cl; c++) {
@@ -673,13 +674,13 @@
                     
                     //check if there is an indexed matching destination
                     var existingDiff = uidIndexes.byDestinationUid[destination.uid];
-                    if (existingDiff) {
+                    if (existingDiff !== undefined) {
                         //no need to create new nodes as nodes will be moved from existing source
                         translateOldDestionationUidToNewSourceUid[oldDestionationUid] = existingDiff.sourceUid;
                         continue;
                     }
 
-                    var source = this.vNodeToOuterVNode(fVSource[c], {performOnVNode: true});
+                    var source = this.vNodeToOuterVNode(fVSource[c], {performOnVNode: false});
                     var newSourceUid = newSourceUids--;
                     translateOldDestionationUidToNewSourceUid[oldDestionationUid] = newSourceUid;
                     
@@ -832,7 +833,7 @@
                     diff.addedLength++;
                 }
             }
-            if (diff.removed.length > 0 || diff.addedLength > 0 || diff.changedLength > 0) {
+            if (diff.removed.length !== 0 || diff.addedLength !== 0 || diff.changedLength !== 0) {
                 diff.isEqual = false;
             }
             return diff;
@@ -860,7 +861,7 @@
 
             var isNotRootNode = (diff.sourceParentUid !== -1);
 
-            if (isNotRootNode) {
+            if (isNotRootNode === true) {
                 var sourceParentDiff = uidIndexes.bySourceUid[diff.sourceParentUid];
                 var destinationParentDiff =  uidIndexes.byDestinationUid[destinationParentVNode.uid];
                 
@@ -881,7 +882,7 @@
                 var sourceDiff = uidIndexes.bySourceUid[diff.sourceUid];
 
                 //if is a child node and has moved the add directive to reindex in siblings
-                if (isChildNode && 
+                if (isChildNode === true && 
                     (diff.changeAdd === true 
                         || diff.changeParent === true 
                         || destinationStartVNode.index !== newIndex
@@ -894,7 +895,7 @@
                     destinationParentDiff.isEqual = false;
                 }
 
-            } else if (diff.changeAdd == true) {
+            } else if (diff.changeAdd === true) {
                 diff.isEqual = false;
                 diff.changeIndex = true;
             }
@@ -925,8 +926,8 @@
                 }
 
                 if (haveChildrenChanged === undefined && diff.changeChildren === true) {
-                    diff.retrospectiveChildrenAdd = true;
                     if (diff.isIncluded === undefined) {
+                        diff.retrospectiveChildrenAdd = true;
                         diff.isIncluded = true;
                         diffs.push(diff);
                     }
@@ -936,6 +937,7 @@
                         if (childDiff.isIncluded === undefined) {
                             childDiff.isIncluded = true;
                             childDiff.retrospectiveChildrenAdd2 = true;
+                            diff.retrospectiveChildrenAdd3 = true;
                             diffs = diffs.concat(childDiff);
                         }
                     }
@@ -985,14 +987,12 @@
             var fVStartNode = [];
             this._vNodeToFVNode(startVNode, fVStartNode, bySourceUid);
 
-            var differential2 = this._cloneObject(differential, {"DOMNode":true});
-
             var diffIndexBySourceUid = {};
-            for (var i = 0, diff; diff = differential2[i++];) { 
+            for (var i = 0, diff; diff = differential[i++];) { 
                 diffIndexBySourceUid[diff.sourceUid] = diff;
             }
 
-            for (var i = 0, diff; diff = differential2[i++];) {
+            for (var i = 0, diff; diff = differential[i++];) {
                 var vNode = bySourceUid[diff.sourceUid];
 
                 if (diff.changeRemove === true) {
@@ -1041,15 +1041,15 @@
                     this._changeData(diff, vNode, options);                    
                 }
 
-                if (diff.changeChildren === true) {
-                    this._reindexParentVNode(vNode, diffIndexBySourceUid, options);
+                if (diff.changeChildren === true && (diff.retrospectiveChildrenAdd)) {
+                    //this._reindexParentVNode(vNode, diffIndexBySourceUid, options);
                 }
 
                 diff.isComplete = true;
             }
 
             //remove redundant items from the original diff
-            this._removeRedundants(differential, differential2);
+            this._removeRedundants(differential);
 
             return startVNode;
         },
@@ -1077,7 +1077,7 @@
         _changeAdd: function _changeAdd(diff, vNode, bySourceUid, diffIndexBySourceUid, options) {
             var parentVNode = bySourceUid[diff.sourceParentUid];
                     
-            var newSourceVNode = this._cloneObject(diff.vNode, {"DOMNode":true});
+            var newSourceVNode = this.vNodeToOuterVNode(diff.vNode, {performOnVNode:false}); //this._cloneObject(diff.vNode, {"DOMNode":true});
             var newNode = this.vNodeToNode(newSourceVNode);
             newSourceVNode.DOMNode = newNode;
 
@@ -1096,7 +1096,7 @@
 
         _changeAttributes: function _changeAttributes(diff, vNode, options) {
             var attributes = diff.attributes;
-            if (attributes.removed.length > 0) {
+            if (attributes.removed.length !== 0) {
                 for (var r = 0, rl = attributes.removed.length; r < rl; r++) {
                     var key = attributes.removed[r];
 
@@ -1107,7 +1107,7 @@
                     delete vNode.attributes[key];
                 }
             }
-            if (attributes.changedLength > 0) {
+            if (attributes.changedLength !== 0) {
                 for (var k in attributes.changed) {
 
                     if (options.performOnDOM === true) {
@@ -1117,7 +1117,7 @@
                     vNode.attributes[k] = attributes.changed[k];
                 }
             }
-            if (attributes.addedLength > 0) {
+            if (attributes.addedLength !== 0) {
                 for (var k in attributes.added) {
 
                     if (options.performOnDOM === true) {
@@ -1142,18 +1142,18 @@
 
         _changeClasses: function _changeClasses(diff, vNode, options) {
             var classes = diff.classes;
-            if (classes.removed.length > 0) {
+            if (classes.removed.length !== 0) {
                 for (var r = 0, rl = classes.removed.length; r < rl; r++) {
                     var key = classes.removed[r];
                     delete vNode.classes[key];
                 }
             }
-            if (classes.changedLength > 0) {
+            if (classes.changedLength !== 0) {
                 for (var k in classes.changed) {
                     vNode.classes[k] = classes.changed[k];
                 }
             }
-            if (classes.addedLength > 0) {
+            if (classes.addedLength !== 0) {
                 for (var k in classes.added) {
                     vNode.classes[k] = classes.added[k];
                 }
@@ -1230,7 +1230,7 @@
 
         _changeIndex: function _changeIndex(diff, vNode, bySourceUid, diffIndexBySourceUid, options) {
             var parentVNode;
-            if (diff.changeParent) {
+            if (diff.changeParent === true) {
                 //if node changed parents last
                 parentVNode = bySourceUid[diff.newSourceParentUid];
 
@@ -1305,7 +1305,7 @@
         },
 
         _reindexParentVNode: function(parentVNode, diffIndexBySourceUid, options, notest) {
-             /* MILD LOGIC ERROR: 
+             /* TO OVERCOME A MILD LOGIC ERROR IF NEED BE:
                 *  At this point a node can be a lot further forward than it should
                 *  This code is to correct for when new nodes are added in a position after 
                 *  a node that will be later removed. When the subsequent node is removed
@@ -1318,7 +1318,7 @@
                 //reindex vnodes as they can change around
                 childNode.index = r;
 
-                if (reIndexOnly) continue;
+                if (reIndexOnly === true) continue;
 
                 var childDiff = diffIndexBySourceUid[childNode.uid];
 
@@ -1372,10 +1372,10 @@
             vNode.deep = diff.deep;
         },
 
-        _removeRedundants: function _removeRedundants(differential, differential2) {
-            for (var i = differential2.length-1, l = -1; i > l; i--) {
-                var diff = differential2[i];
-                if (diff.redundant) {
+        _removeRedundants: function _removeRedundants(differential) {
+            for (var i = differential.length-1, l = -1; i > l; i--) {
+                var diff = differential[i];
+                if (diff.redundant === true) {
                     differential.splice(i,1);
                 }
             }
@@ -1392,7 +1392,7 @@
             } else if (value instanceof Object) {
                 var rtn = {};
                 for (var k in value) {
-                    if (copy && copy[k]) {
+                    if (copy !== undefined && copy.hasOwnProperty(k)) {
                         rtn[k] = value[k]
                     } else {
                         rtn[k] = this._cloneObject(value[k], copy);
@@ -1406,11 +1406,29 @@
         //clone and strip the children from the vNode
         vNodeToOuterVNode: function vNodeToOuterVNode(vNode, options) {
             if (options !== undefined && options.performOnVNode === false) {
-                vNode = this._cloneObject(vNode, { "DOMNode": true });
-            }
-            switch (vNode.nodeType) {
-            case 1:
-                vNode.childNodes.length = 0;
+                var clone = {};
+                for (var k in vNode) {
+                    switch (k) {
+                    case "childNodes":
+                        clone.childNodes = [];
+                        continue;
+                    case "DOMNode":
+                        clone[k] = vNode[k];
+                        continue;
+                    default: 
+                        if (vNode[k] instanceof Object) {
+                            clone[k] = this._cloneObject(vNode[k]);
+                            continue;
+                        }
+                        clone[k] = vNode[k];
+                    }
+                }
+                vNode = clone;
+            } else {
+                switch (vNode.nodeType) {
+                case 1:
+                    vNode.childNodes.length = 0;
+                }
             }
             return vNode;
         },
@@ -1443,10 +1461,10 @@
                     classes.push(k);            
                 }
                 var className = classes.join(" ");
-                if (className) {
+                if (className !== "") {
                     DOMNode.setAttribute("class", className);
                 }
-                if (vNode.id) {
+                if (vNode.id !== "" && vNode.id !== undefined) {
                     DOMNode.setAttribute("id", vNode.id);
                 }
 
@@ -1567,14 +1585,18 @@
             var vNode1 = this.nodeToVNode(DOMNode1);
             var vNode2 = this.nodeToVNode(DOMNode2);
 
-            if (options.test) {
+            if (options.test === true) {
                 this.vNodeCheckIndexes(vNode1);
                 this.vNodeCheckIndexes(vNode2);
             }
 
             var diff = this.vNodesDiff(vNode1, vNode2, options);
 
-            this.vNodeDiffApply(vNode1, diff);
+            options = this._cloneObject(options);
+            options.performOnDOM = true;
+            options.performOnVNode = true;
+
+            this.vNodeDiffApply(vNode1, diff, options);
 
             if (options.test === true) {
 
