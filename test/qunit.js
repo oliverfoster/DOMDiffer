@@ -108,7 +108,7 @@ function performDiff(context, assert) {
     var start = (new Date()).getTime();
 
     //perform test
-    var diff = dd.nodeUpdateNode(diffed, templateNode, {test:false, forDebug: true, errorOnFail: true, ignoreContainer:true, returnDiff: true});
+    var diff = dd.nodeUpdateNode(diffed, templateNode, {test:true, forDebug: true, errorOnFail: true, ignoreContainer:true, returnDiff: true});
     
 
     //capture total elapsed time
@@ -116,7 +116,7 @@ function performDiff(context, assert) {
     
     //console log and show changes
     if (time > longest) longest = time;
-    //console.log(count++, context.change, time+"ms", diff.length+"diffs", diff);
+    console.log(count++, context.change, time+"ms", diff.length+"diffs", diff);
     console.log("longest", longest);
     template.innerHTML = diffed.outerHTML;
 

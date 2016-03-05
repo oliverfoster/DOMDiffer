@@ -188,7 +188,8 @@
             var attributeName;
             var attributeValue;
             var allowedAttribute;
-            for (var i = 0, attribute; attribute = nodeAttributes.item(i++);) {
+            for (var i = 0, l = nodeAttributes.length; i < l; i++) {
+                attribute = nodeAttributes.item(i);
                 attributeName = attribute.name;
                 attributeValue = attribute.value;
 
@@ -210,13 +211,13 @@
                     if (!allowedClass) continue;
                     vNodeClasses[className] = true;
                 }
-                //delete vNodeAttributes['class'];
+                delete vNodeAttributes['class'];
             }
 
             var idValue = vNodeAttributes.id;
             if (idValue) {
                 vNode.id = idValue;
-                //delete vNodeAttributes.id;
+                delete vNodeAttributes.id;
             }
         },
 
@@ -424,12 +425,14 @@
             for (var sIndex = 0; sIndex < sourceTop; sIndex++) {
 
                 source = fVSource[sIndex];
+                if (!source) continue;
                 sourceUid = source.uid;
 
                 rated = [];
                 for (var dIndex = 0, dLength = fVDestination.length; dIndex < dLength; dIndex++) {
 
                     destination = fVDestination[dIndex];
+                    if (!destination) continue;
                     destinationUid = destination.uid;
 
                     rate = this._rateCompare(destination, source);
@@ -439,8 +442,8 @@
                         maxRating = rate;
                         maxRatedIndex = dIndex;
                         if (rate === 1) {
-                            fVSource.splice(sIndex, 1);
-                            fVDestination.splice(dIndex, 1);
+                            fVSource.splice(sIndex, 1, undefined);
+                            fVDestination.splice(dIndex, 1, undefined);
                             diffObj = {
                                 source: source,
                                 destination: destination,
@@ -470,8 +473,8 @@
                 }
 
                 if (maxRated && maxRating >= minRate) {
-                    fVSource.splice(sIndex, 1);
-                    fVDestination.splice(maxRatedIndex, 1);
+                    fVSource.splice(sIndex, 1, undefined);
+                    fVDestination.splice(maxRatedIndex, 1, undefined);
                     diffObj = {
                         source: source,
                         destination: maxRated,
@@ -640,6 +643,7 @@
             var diffObj;
             for (var f2Index = 0, l = fVSource2.length; f2Index < l; f2Index++) {
                 source = fVSource2[f2Index];
+                if (source === undefined) continue;
 
                 diffObj = {
                     changeRemove: true,
@@ -663,7 +667,7 @@
 
             }
 
-            fVSource2.splice(0, fVSource2.length)[0];
+            //fVSource2.splice(0, fVSource2.length)[0];
 
             return removes;
         },
@@ -679,13 +683,15 @@
             for (var f2Index = 0, l = fVDestination2.length; f2Index < l; f2Index++) {
 
                 destination = fVDestination2[f2Index];
+                if (destination === undefined) continue;
                 destinationParentUids[destination.uid] = true;
                 if (!destinationParentUids[destination.parentUid]) {
                     newDestinationRoots.push(destination);
                 }
 
             }
-            fVDestination2.splice(0, fVDestination2.length)[0];
+            //fVDestination2.splice(0, fVDestination2.length)[0];
+
 
             //create matches for new objects to that sourceUids don't conflict with preexisting sourceNodes
             //assign new item.sourceUids from the negative spectrum
@@ -801,14 +807,14 @@
                     match.nodeName = destination.nodeName;
                     match.isEqual = false;
                 }
-                var changeAttributes = this._diffKeyValues(source.attributes, destination.attributes, {"class":true, id:true});
+                var changeAttributes = this._diffKeyValues(source.attributes, destination.attributes);
                 if (!changeAttributes.isEqual) {
                     match.changeAttributes = true;
                     match.attributes = changeAttributes;
                     match.isEqual = false;
                 }
-                var changeClasses = this._diffKeys(source.classes, destination.classes, {});
-                if (changeClasses) {
+                var changeClasses = this._diffKeys(source.classes, destination.classes);
+                if (!changeClasses.isEqual) {
                     match.changeClasses = true;
                     match.classes = changeClasses;
                     match.isEqual = false;
@@ -834,7 +840,7 @@
         },
 
         //describe the differences between two objects (source & destination attributes, or source & destination classes)
-        _diffKeys: function _diffKeys (source, destination, skip) {
+        _diffKeys: function _diffKeys (source, destination) {
             var diff = {
                 removed: [],
                 addedLength: 0,
@@ -848,7 +854,6 @@
             var exists;
             var value;
             for (var k in source) {
-                if (skip[k]) continue;
                 nodeValue = destination[k];
 
                 exists = (nodeValue !== undefined);
@@ -865,7 +870,6 @@
             }
             var destKeys = [];
             for (var k in destination) {
-                if (skip[k]) continue;
                 destKeys.push(k);
                 exists = (source[k] !== undefined);
                 if (!exists) {
@@ -878,10 +882,10 @@
                 diff.isEqual = false;
                 diff.value = destKeys.join(" ");
             }
-            return diff.value;
+            return diff;
         },
 
-        _diffKeyValues: function _diffKeyValues (source, destination, skip) {
+        _diffKeyValues: function _diffKeyValues (source, destination) {
             var diff = {
                 removed: [],
                 addedLength: 0,
@@ -894,7 +898,6 @@
             var exists;
             var value;
             for (var k in source) {
-                if (skip[k]) continue;
                 nodeValue = destination[k];
 
                 exists = (nodeValue !== undefined);
@@ -910,7 +913,6 @@
                 }
             }
             for (var k in destination) {
-                if (skip[k]) continue;
                 exists = (source[k] !== undefined);
                 if (!exists) {
                     nodeValue = destination[k];
@@ -998,8 +1000,11 @@
                     || diff.changeHierachyData
                     || diff.changeChildren
                     ) {
+                    diff.isIncluded = true;
                     diffs.push(diff);
                 }
+
+                //var haveChildrenChanged = diff.changeChildren;
 
                 var childNode;
                 var childDiffs;
@@ -1008,6 +1013,24 @@
                     childDiffs = this._rebuildDestinationFromSourceMatches(childNode, sourceMatches, uidIndexes, destinationStartVNode, i);
                     diffs = diffs.concat(childDiffs);
                 }
+
+                /*if (haveChildrenChanged === undefined && diff.changeChildren === true) {
+                    if (diff.isIncluded === undefined) {
+                        diff.retrospectiveChildrenAdd = true;
+                        diff.isIncluded = true;
+                        //diffs.push(diff);
+                    }
+                    for (var i = 0, l = destinationStartVNode.childNodes.length; i < l; i++) {
+                        var childNode = destinationStartVNode.childNodes[i];
+                        var childDiff = uidIndexes.byDestinationUid[childNode.uid];
+                        if (childDiff.isIncluded === undefined) {
+                            childDiff.isIncluded = true;
+                            childDiff.retrospectiveChildrenAdd2 = true;
+                            diff.retrospectiveChildrenAdd3 = true;
+                            //diffs = diffs.concat(childDiff);
+                        }
+                    }
+                }*/
 
                 break;
             case 3:
@@ -1018,6 +1041,7 @@
                     || diff.changeIndex
                     || diff.changeHierachyData
                     ) {
+                    diff.isIncluded = true;
                     diffs.push(diff);
                 }
                 break;
@@ -1107,14 +1131,88 @@
                     this._changeData(diff, vNode, options);                    
                 }
 
+                if (diff.changeChildren === true) {
+                    //this._reindexParentVNode(vNode, diffIndexBySourceUid, options);
+                }
+
                 diff.isComplete = true;
             }
 
             //remove redundant items from the original diff
             this._removeRedundants(differential);
 
+            //this._reindexVNode(startVNode);
+
             return startVNode;
         },
+
+        /*_reindexVNode: function _reindexVNode(vNode) {
+            switch (vNode.nodeType) {
+            case 1:
+
+                for (var i = 0, l = vNode.childNodes.length; i < l; i++) {
+                    var childNode = vNode.childNodes[i];
+                    childNode.index = i;
+                    if (childNode.nodeType === 3) {
+                        this._reindexVNode(childNode);
+                    }
+                }
+            }
+        },*/
+
+        /*_reindexParentVNode: function(parentVNode, diffIndexBySourceUid, options, notest) {
+            console.log("reindexing")
+             // TO OVERCOME A MILD LOGIC ERROR IF NEED BE:
+                  // At this point a node can be a lot further forward than it should
+                  // This code is to correct for when new nodes are added in a position after 
+                  // a node that will be later removed. When the subsequent node is removed
+                  // all of the earlier add
+                
+
+            var reIndexOnly = false;
+            for (var r = 0, rl = parentVNode.childNodes.length; r < rl; r++) {
+                var childNode = parentVNode.childNodes[r];
+                //reindex vnodes as they can change around
+                childNode.index = r;
+
+                if (reIndexOnly === true) continue;
+
+                var childDiff = diffIndexBySourceUid[childNode.uid];
+
+                //check if a differential was made for this node
+                //if there was it was a node that moved or changed
+                if (childDiff === undefined) continue;
+
+                if (childDiff.changeRemove === true) {
+                    reIndexOnly = true;
+                    continue;
+                }
+
+                //compare the destinationIndex with the current index
+                if (childDiff.destinationIndex === childNode.index) continue;
+
+                if (childDiff.changeParent === true && childDiff.newSourceParentUid !== childNode.parentUid) {
+                    reIndexOnly = true;
+                    continue;
+                }
+
+                if (childDiff.destinationIndex >= parentVNode.childNodes.length) continue;
+
+                this._relocateNode(childDiff, childNode, parentVNode, options);
+                //start again from affected nodes
+                r = childDiff.destinationIndex-2;
+            }
+
+            //TO TEST THE ABOVE CODE WAS SUCCESSFULL
+            if (options.test && options.performOnDOM && notest !== true) {
+                var reVNode = this.nodeToVNode(parentVNode.DOMNode);
+                var res = this.vNodesAreEqual(parentVNode, reVNode, {ignoreDepths: true, forDebug:true});
+                if (!res) debugger;
+            }
+            if (reIndexOnly) {
+                console.log("reindexed", diffIndexBySourceUid[parentVNode.uid]);
+            }
+        },*/
 
         _changeRemove: function _changeRemove(diff, vNode, bySourceUid, diffIndexBySourceUid, options) {
             var parentVNode = bySourceUid[diff.sourceParentUid];
@@ -1204,10 +1302,30 @@
 
         _changeClasses: function _changeClasses(diff, vNode, options) {
             var classes = diff.classes;
-            if (!classes) {
+            
+            var className = classes.value;
+            if (!className) {
                 vNode.DOMNode.removeAttribute("class");
             } else {
-                vNode.DOMNode.setAttribute("class", classes);
+                vNode.DOMNode.setAttribute("class", className);
+            }
+
+            
+            if (classes.removed.length !== 0) {
+                for (var r = 0, rl = classes.removed.length; r < rl; r++) {
+                    var key = classes.removed[r];
+                    delete vNode.classes[key];
+                }
+            }
+            if (classes.changedLength !== 0) {
+                for (var k in classes.changed) {
+                    vNode.classes[k] = classes.changed[k];
+                }
+            }
+            if (classes.addedLength !== 0) {
+                for (var k in classes.added) {
+                    vNode.classes[k] = classes.added[k];
+                }
             }
         },
 
