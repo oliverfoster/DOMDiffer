@@ -425,14 +425,12 @@
             for (var sIndex = 0; sIndex < sourceTop; sIndex++) {
 
                 source = fVSource[sIndex];
-                if (!source) continue;
                 sourceUid = source.uid;
 
                 rated = [];
                 for (var dIndex = 0, dLength = fVDestination.length; dIndex < dLength; dIndex++) {
 
                     destination = fVDestination[dIndex];
-                    if (!destination) continue;
                     destinationUid = destination.uid;
 
                     rate = this._rateCompare(destination, source);
@@ -442,8 +440,8 @@
                         maxRating = rate;
                         maxRatedIndex = dIndex;
                         if (rate === 1) {
-                            fVSource.splice(sIndex, 1, undefined);
-                            fVDestination.splice(dIndex, 1, undefined);
+                            fVSource.splice(sIndex, 1);
+                            fVDestination.splice(dIndex, 1);
                             diffObj = {
                                 source: source,
                                 destination: destination,
@@ -473,8 +471,8 @@
                 }
 
                 if (maxRated && maxRating >= minRate) {
-                    fVSource.splice(sIndex, 1, undefined);
-                    fVDestination.splice(maxRatedIndex, 1, undefined);
+                    fVSource.splice(sIndex, 1);
+                    fVDestination.splice(maxRatedIndex, 1);
                     diffObj = {
                         source: source,
                         destination: maxRated,
@@ -643,7 +641,6 @@
             var diffObj;
             for (var f2Index = 0, l = fVSource2.length; f2Index < l; f2Index++) {
                 source = fVSource2[f2Index];
-                if (source === undefined) continue;
 
                 diffObj = {
                     changeRemove: true,
@@ -683,7 +680,6 @@
             for (var f2Index = 0, l = fVDestination2.length; f2Index < l; f2Index++) {
 
                 destination = fVDestination2[f2Index];
-                if (destination === undefined) continue;
                 destinationParentUids[destination.uid] = true;
                 if (!destinationParentUids[destination.parentUid]) {
                     newDestinationRoots.push(destination);
