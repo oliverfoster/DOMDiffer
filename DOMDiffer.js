@@ -102,7 +102,7 @@
 
             if (!options.ignoreChildren) {
                 var allowedSubTree = this._isAllowedSubTree(vNode);
-                if (!allowedSubTree) return;
+                if (!allowedSubTree) return vNode;
 
                 //capture deep from childNodes
                 var deep = 0;
@@ -111,19 +111,23 @@
 
                 if (DOMNode.childNodes.length) deep++;
 
+                var childNode;
+                var childNodeType;
+                var vChildNode;
+                var childContext;
                 for (var i = 0, l = DOMNode.childNodes.length; i < l; i++) {
-                    var childNode = DOMNode.childNodes[i];
-                    var childNodeType = childNode.nodeType;
+                    childNode = DOMNode.childNodes[i];
+                    childNodeType = childNode.nodeType;
 
                     switch (childNodeType) {
                     case 1:
-                        var childContext = {
+                        childContext = {
                             depth: vNode.depth+1, 
                             index: i,
                             uid: context.uid, // carry current uid count through
                             parentUid: vNode.uid
                         };
-                        var vChildNode = this.nodeToVNode(childNode, options, childContext);
+                        vChildNode = this.nodeToVNode(childNode, options, childContext);
                         deep = deep+vChildNode.deep;
                         context.uid = childContext.uid;
                         break;
@@ -181,11 +185,14 @@
             var vNodeAttributes = vNode.attributes;
             var vNodeClasses = vNode.classes;
 
+            var attributeName;
+            var attributeValue;
+            var allowedAttribute;
             for (var i = 0, attribute; attribute = nodeAttributes.item(i++);) {
-                var attributeName = attribute.name;
-                var attributeValue = attribute.value;
+                attributeName = attribute.name;
+                attributeValue = attribute.value;
 
-                var allowedAttribute = this._isAllowedAttribute(attributeName);
+                allowedAttribute = this._isAllowedAttribute(attributeName);
                 if (!allowedAttribute) continue;
 
                 vNodeAttributes[attributeName] = attributeValue;
@@ -194,20 +201,22 @@
             var classValue = vNodeAttributes['class'];
             if (classValue) {
                 var classes = classValue.split(" ");
+                var className;
+                var allowedClass;
                 for (var c = 0, cl = classes.length; c < cl; c++) {
-                    var className = classes[c];
+                    className = classes[c];
                     if (!className) continue;
-                    var allowedClass = this._isAllowedClass(className);
+                    allowedClass = this._isAllowedClass(className);
                     if (!allowedClass) continue;
                     vNodeClasses[className] = true;
                 }
-                delete vNodeAttributes['class'];
+                //delete vNodeAttributes['class'];
             }
 
             var idValue = vNodeAttributes.id;
             if (idValue) {
                 vNode.id = idValue;
-                delete vNodeAttributes.id;
+                //delete vNodeAttributes.id;
             }
         },
 
@@ -229,8 +238,9 @@
             if (!ignoreClasses || !ignoreClasses.length) return true;
 
             //ignore matching classes
+            var ignoreClass;
             for (var i = 0, l = ignoreClasses.length; i < l; i++) {
-                var ignoreClass = ignoreClasses[i];
+                ignoreClass = ignoreClasses[i];
                 if (ignoreClass === className) {
                     return false;
                 }
@@ -258,9 +268,10 @@
             if (!ignoreSubTreesWithAttributes || !ignoreSubTreesWithAttributes.length) return true;
 
             //if node has attribute then stop building tree here
+            var attr;
             for (var i = 0, l = ignoreSubTreesWithAttributes.length; i < l; i++) {
-                var attr = ignoreSubTreesWithAttributes[i];
-                if (vNode.attributes.hasOwnProperty(attr)) {
+                attr = ignoreSubTreesWithAttributes[i];
+                if (vNode.attributes[attr] !== undefined) {
                     return false;
                 }
             }
@@ -403,18 +414,25 @@
             //match each source piece to the best destination piece
             //this way the fewest source moves will be made
             var sourceTop = fVSource.length;
+            var source;
+            var sourceUid;
+            var destination;
+            var destinationUid;
+            var diffObj;
+            var rated;
+            var rate;
             for (var sIndex = 0; sIndex < sourceTop; sIndex++) {
 
-                var source = fVSource[sIndex];
-                var sourceUid = source.uid;
+                source = fVSource[sIndex];
+                sourceUid = source.uid;
 
-                var rated = [];
+                rated = [];
                 for (var dIndex = 0, dLength = fVDestination.length; dIndex < dLength; dIndex++) {
 
-                    var destination = fVDestination[dIndex];
-                    var destinationUid = destination.uid;
+                    destination = fVDestination[dIndex];
+                    destinationUid = destination.uid;
 
-                    var rate = this._rateCompare(destination, source);
+                    rate = this._rateCompare(destination, source);
                     if (rate > maxRating && rate >= minRate) {
                         rated.push(destination);
                         maxRated = destination;
@@ -423,7 +441,7 @@
                         if (rate === 1) {
                             fVSource.splice(sIndex, 1);
                             fVDestination.splice(dIndex, 1);
-                            var diffObj = {
+                            diffObj = {
                                 source: source,
                                 destination: destination,
                                 nodeType: source.nodeType,
@@ -454,7 +472,7 @@
                 if (maxRated && maxRating >= minRate) {
                     fVSource.splice(sIndex, 1);
                     fVDestination.splice(maxRatedIndex, 1);
-                    var diffObj = {
+                    diffObj = {
                         source: source,
                         destination: maxRated,
                         nodeType: source.nodeType,
@@ -505,7 +523,7 @@
                 value+=vsource.deep === vdestination.deep? 1 : 0;
                 value+=vsource.index === vdestination.index? 1 : 0;
 
-                rate = (value / 18) || -1;
+                rate = (value / 18);// || -1;
 
                 break;
             case 3:
@@ -515,7 +533,7 @@
                 value+=vsource.trimmed === vdestination.trimmed? 2 : 0;
                 value+=vsource.data === vdestination.data? 1 : 0;
                 
-                rate = (value / 7) || -1;
+                rate = (value / 7);// || -1;
             }
 
             return rate;
@@ -538,7 +556,7 @@
 
                 value+=vsource.nodeName === vdestination.nodeName?1:0;
 
-                rate = (value / 9) || -1;
+                rate = (value / 9);// || -1;
 
                 break;
             case 3:
@@ -546,7 +564,7 @@
                 value+=vsource.trimmed === vdestination.trimmed? 2 : 0;
                 value+=vsource.data === vdestination.data? 1 : 0;
                 
-                rate = (value / 3) || -1;
+                rate = (value / 3);// || -1;
             }
 
             return rate;
@@ -570,7 +588,7 @@
                 
                 value+=vsource.index === vdestination.index? 1 : 0;
 
-                rate = (value / 10) || -1;
+                rate = (value / 10);// || -1;
 
                 break;
             case 3:
@@ -579,7 +597,7 @@
                 value+=vsource.trimmed === vdestination.trimmed? 2 : 0;
                 value+=vsource.data === vdestination.data? 1 : 0;
                 
-                rate = (value / 4) || -1;
+                rate = (value / 4);// || -1;
             }
 
             return rate;
@@ -590,16 +608,18 @@
         _keyValueCompare: function _keyValueCompare(object1, object2) {
             var matchingValues = 0;
             var totalKeys = 0;
+            var o2value;
             for (var k1 in object1) {
                 totalKeys++;
-                if (object2.hasOwnProperty(k1)) {
-                    if (object2[k1] === object2[k1]) {
+                o2value = object2[k1];
+                if (o2value !== undefined) {
+                    if (object1[k1] === o2value) {
                         matchingValues++;
                     }
                 }
             }
             for (var k2 in object2) {
-                if (!object1.hasOwnProperty(k2)) {
+                if (object1[k2] === undefined) {
                     totalKeys++;
                 }
             }
@@ -616,10 +636,12 @@
             var deleteSourceRoots = [];
             var sourceParentUids = {};
 
+            var source;
+            var diffObj;
             for (var f2Index = 0, l = fVSource2.length; f2Index < l; f2Index++) {
-                var source = fVSource2[f2Index];
+                source = fVSource2[f2Index];
 
-                var diffObj = {
+                diffObj = {
                     changeRemove: true,
                     source: source,
                     nodeType: source.nodeType,
@@ -653,9 +675,10 @@
 
             var newDestinationRoots = [];
             var destinationParentUids = {};
+            var destination;
             for (var f2Index = 0, l = fVDestination2.length; f2Index < l; f2Index++) {
 
-                var destination = fVDestination2[f2Index];
+                destination = fVDestination2[f2Index];
                 destinationParentUids[destination.uid] = true;
                 if (!destinationParentUids[destination.parentUid]) {
                     newDestinationRoots.push(destination);
@@ -778,14 +801,14 @@
                     match.nodeName = destination.nodeName;
                     match.isEqual = false;
                 }
-                var changeAttributes = this._diffKeys(source.attributes, destination.attributes);
+                var changeAttributes = this._diffKeyValues(source.attributes, destination.attributes, {"class":true, id:true});
                 if (!changeAttributes.isEqual) {
                     match.changeAttributes = true;
                     match.attributes = changeAttributes;
                     match.isEqual = false;
                 }
-                var changeClasses = this._diffKeys(source.classes, destination.classes);
-                if (!changeClasses.isEqual) {
+                var changeClasses = this._diffKeys(source.classes, destination.classes, {});
+                if (changeClasses) {
                     match.changeClasses = true;
                     match.classes = changeClasses;
                     match.isEqual = false;
@@ -811,7 +834,7 @@
         },
 
         //describe the differences between two objects (source & destination attributes, or source & destination classes)
-        _diffKeys: function _diffKeys (source, destination) {
+        _diffKeys: function _diffKeys (source, destination, skip) {
             var diff = {
                 removed: [],
                 addedLength: 0,
@@ -819,25 +842,78 @@
                 changedLength: 0,
                 changed: {},
                 isEqual: true,
+                value: "",
             };
+            var nodeValue;
+            var exists;
+            var value;
             for (var k in source) {
-                var exists = destination.hasOwnProperty(k);
+                if (skip[k]) continue;
+                nodeValue = destination[k];
+
+                exists = (nodeValue !== undefined);
                 if (!exists) {
                     diff.removed.push(k);
                     continue;
                 } 
 
-                var value = source[k];
-                var nodeValue = destination[k];
+                value = source[k];
+                if (value !== nodeValue) {
+                    diff.changed[k] = nodeValue;
+                    diff.changedLength++;
+                }
+            }
+            var destKeys = [];
+            for (var k in destination) {
+                if (skip[k]) continue;
+                destKeys.push(k);
+                exists = (source[k] !== undefined);
+                if (!exists) {
+                    nodeValue = destination[k];
+                    diff.added[k] = nodeValue;
+                    diff.addedLength++;
+                }
+            }
+            if (diff.removed.length || diff.addedLength || diff.changedLength) {
+                diff.isEqual = false;
+                diff.value = destKeys.join(" ");
+            }
+            return diff.value;
+        },
+
+        _diffKeyValues: function _diffKeyValues (source, destination, skip) {
+            var diff = {
+                removed: [],
+                addedLength: 0,
+                added: {},
+                changedLength: 0,
+                changed: {},
+                isEqual: true
+            };
+            var nodeValue;
+            var exists;
+            var value;
+            for (var k in source) {
+                if (skip[k]) continue;
+                nodeValue = destination[k];
+
+                exists = (nodeValue !== undefined);
+                if (!exists) {
+                    diff.removed.push(k);
+                    continue;
+                } 
+
+                value = source[k];
                 if (value !== nodeValue) {
                     diff.changed[k] = nodeValue;
                     diff.changedLength++;
                 }
             }
             for (var k in destination) {
-                var exists = source.hasOwnProperty(k);
+                if (skip[k]) continue;
+                exists = (source[k] !== undefined);
                 if (!exists) {
-                    var nodeValue = destination[k];
+                    nodeValue = destination[k];
                     diff.added[k] = nodeValue;
                     diff.addedLength++;
                 }
@@ -925,9 +1001,11 @@
                     diffs.push(diff);
                 }
 
+                var childNode;
+                var childDiffs;
                 for (var i = 0, l = destinationStartVNode.childNodes.length; i < l; i++) {
-                    var childNode = destinationStartVNode.childNodes[i];
-                    var childDiffs = this._rebuildDestinationFromSourceMatches(childNode, sourceMatches, uidIndexes, destinationStartVNode, i);
+                    childNode = destinationStartVNode.childNodes[i];
+                    childDiffs = this._rebuildDestinationFromSourceMatches(childNode, sourceMatches, uidIndexes, destinationStartVNode, i);
                     diffs = diffs.concat(childDiffs);
                 }
 
@@ -979,8 +1057,9 @@
                 diffIndexBySourceUid[diff.sourceUid] = diff;
             }
 
+            var vNode;
             for (var i = 0, diff; diff = differential[i++];) {
-                var vNode = bySourceUid[diff.sourceUid];
+                vNode = bySourceUid[diff.sourceUid];
 
                 if (diff.changeRemove) {
                     this._changeRemove(diff, vNode, bySourceUid, diffIndexBySourceUid, options);                    
@@ -1125,36 +1204,10 @@
 
         _changeClasses: function _changeClasses(diff, vNode, options) {
             var classes = diff.classes;
-            if (classes.removed.length) {
-                for (var r = 0, rl = classes.removed.length; r < rl; r++) {
-                    var key = classes.removed[r];
-                    delete vNode.classes[key];
-                }
-            }
-            if (classes.changedLength) {
-                for (var k in classes.changed) {
-                    vNode.classes[k] = classes.changed[k];
-                }
-            }
-            if (classes.addedLength) {
-                for (var k in classes.added) {
-                    vNode.classes[k] = classes.added[k];
-                }
-            }
-
-            if (options.performOnDOM) {
-                if (!classes.isEqual) {
-                    var classNames = [];
-                    for (var k in vNode.classes) {
-                        classNames.push(k);
-                    }
-                    var finalClass = classNames.join(" ");
-                    if (finalClass === "") {
-                        vNode.DOMNode.removeAttribute("class");
-                    } else {
-                        vNode.DOMNode.setAttribute("class", finalClass);
-                    }
-                }
+            if (!classes) {
+                vNode.DOMNode.removeAttribute("class");
+            } else {
+                vNode.DOMNode.setAttribute("class", classes);
             }
         },
 
@@ -1256,7 +1309,7 @@
 
         },
 
-        _relocateNode: function(diff, vNode, parentVNode, options) {
+        _relocateNode: function _relocateNode(diff, vNode, parentVNode, options) {
             if (diff.destinationIndex > vNode.index) {
                 /* insert before next, when a node is moved up a list it changes the indices of 
                     *  all the elements above it
@@ -1321,7 +1374,7 @@
             } else if (value instanceof Object) {
                 var rtn = {};
                 for (var k in value) {
-                    if (copy && copy.hasOwnProperty(k)) {
+                    if (copy && copy[k] !== undefined) {
                         rtn[k] = value[k]
                     } else {
                         rtn[k] = this._cloneObject(value[k], copy);
@@ -1491,7 +1544,7 @@
 
         },
 
-        vNodeCheckIndexes: function(vNode) {
+        vNodeCheckIndexes: function vNodeCheckIndexes(vNode) {
 
             switch (vNode.nodeType) {
             case 1:

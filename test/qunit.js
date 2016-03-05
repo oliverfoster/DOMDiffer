@@ -116,7 +116,7 @@ function performDiff(context, assert) {
     
     //console log and show changes
     if (time > longest) longest = time;
-    console.log(count++, context.change, time+"ms", diff.length+"diffs", diff);
+    //console.log(count++, context.change, time+"ms", diff.length+"diffs", diff);
     console.log("longest", longest);
     template.innerHTML = diffed.outerHTML;
 
