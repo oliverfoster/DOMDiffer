@@ -185,6 +185,7 @@
             var vNodeAttributes = vNode.attributes;
             var vNodeClasses = vNode.classes;
 
+            var attribute;
             var attributeName;
             var attributeValue;
             var allowedAttribute;
@@ -387,8 +388,8 @@
                 var source = fVSource[0];
                 var destination = fVDestination[0];
                 var rate = this._rateCompare(source, destination);
-                fVSource.splice(0, 1);
-                fVDestination.splice(0, 1);
+                fVSource[0] = undefined;
+                fVDestination[0] = undefined;
                 var diffObj = {
                     source: source,
                     destination: destination,
@@ -426,12 +427,14 @@
             for (var sIndex = 0; sIndex < sourceTop; sIndex++) {
 
                 source = fVSource[sIndex];
+                if (!source) continue;
                 sourceUid = source.uid;
 
                 rated = [];
                 for (var dIndex = 0, dLength = fVDestination.length; dIndex < dLength; dIndex++) {
 
                     destination = fVDestination[dIndex];
+                    if (!destination) continue;
                     destinationUid = destination.uid;
 
                     rate = this._rateCompare(destination, source);
@@ -441,8 +444,8 @@
                         maxRating = rate;
                         maxRatedIndex = dIndex;
                         if (rate === 1) {
-                            fVSource.splice(sIndex, 1);
-                            fVDestination.splice(dIndex, 1);
+                            fVSource[sIndex] = undefined;
+                            fVDestination[dIndex] = undefined;
                             diffObj = {
                                 source: source,
                                 destination: destination,
@@ -472,8 +475,8 @@
                 }
 
                 if (maxRated && maxRating >= minRate) {
-                    fVSource.splice(sIndex, 1);
-                    fVDestination.splice(maxRatedIndex, 1);
+                    fVSource[sIndex] = undefined;
+                    fVDestination[maxRatedIndex] = undefined;
                     diffObj = {
                         source: source,
                         destination: maxRated,
@@ -525,7 +528,7 @@
                 value+=vsource.deep === vdestination.deep? 1 : 0;
                 value+=vsource.index === vdestination.index? 1 : 0;
 
-                rate = (value / 18);// || -1;
+                rate = (value / 18);
 
                 break;
             case 3:
@@ -535,7 +538,7 @@
                 value+=vsource.trimmed === vdestination.trimmed? 2 : 0;
                 value+=vsource.data === vdestination.data? 1 : 0;
                 
-                rate = (value / 7);// || -1;
+                rate = (value / 7);
             }
 
             return rate;
@@ -558,7 +561,7 @@
 
                 value+=vsource.nodeName === vdestination.nodeName?1:0;
 
-                rate = (value / 9);// || -1;
+                rate = (value / 9);
 
                 break;
             case 3:
@@ -566,7 +569,7 @@
                 value+=vsource.trimmed === vdestination.trimmed? 2 : 0;
                 value+=vsource.data === vdestination.data? 1 : 0;
                 
-                rate = (value / 3);// || -1;
+                rate = (value / 3)
             }
 
             return rate;
@@ -614,10 +617,8 @@
             for (var k1 in object1) {
                 totalKeys++;
                 o2value = object2[k1];
-                if (o2value !== undefined) {
-                    if (object1[k1] === o2value) {
-                        matchingValues++;
-                    }
+                if (object1[k1] === o2value) {
+                    matchingValues++;
                 }
             }
             for (var k2 in object2) {
@@ -642,7 +643,7 @@
             var diffObj;
             for (var f2Index = 0, l = fVSource2.length; f2Index < l; f2Index++) {
                 source = fVSource2[f2Index];
-
+                if (!source) continue;
                 diffObj = {
                     changeRemove: true,
                     source: source,
@@ -681,14 +682,13 @@
             for (var f2Index = 0, l = fVDestination2.length; f2Index < l; f2Index++) {
 
                 destination = fVDestination2[f2Index];
+                if (!destination) continue;
                 destinationParentUids[destination.uid] = true;
                 if (!destinationParentUids[destination.parentUid]) {
                     newDestinationRoots.push(destination);
                 }
 
             }
-            //fVDestination2.splice(0, fVDestination2.length)[0];
-
 
             //create matches for new objects to that sourceUids don't conflict with preexisting sourceNodes
             //assign new item.sourceUids from the negative spectrum
@@ -1001,7 +1001,7 @@
                     diffs.push(diff);
                 }
 
-                //var haveChildrenChanged = diff.changeChildren;
+                var haveChildrenChanged = diff.changeChildren;
 
                 var childNode;
                 var childDiffs;
@@ -1011,11 +1011,11 @@
                     diffs = diffs.concat(childDiffs);
                 }
 
-                /*if (haveChildrenChanged === undefined && diff.changeChildren === true) {
+                if (haveChildrenChanged === undefined && diff.changeChildren === true) {
                     if (diff.isIncluded === undefined) {
                         diff.retrospectiveChildrenAdd = true;
                         diff.isIncluded = true;
-                        //diffs.push(diff);
+                        diffs.push(diff);
                     }
                     for (var i = 0, l = destinationStartVNode.childNodes.length; i < l; i++) {
                         var childNode = destinationStartVNode.childNodes[i];
@@ -1024,10 +1024,10 @@
                             childDiff.isIncluded = true;
                             childDiff.retrospectiveChildrenAdd2 = true;
                             diff.retrospectiveChildrenAdd3 = true;
-                            //diffs = diffs.concat(childDiff);
+                            diffs = diffs.concat(childDiff);
                         }
                     }
-                }*/
+                }
 
                 break;
             case 3:
@@ -1129,7 +1129,7 @@
                 }
 
                 if (diff.changeChildren === true) {
-                    //this._reindexParentVNode(vNode, diffIndexBySourceUid, options);
+                    this._reindexParentVNode(vNode, diffIndexBySourceUid, options);
                 }
 
                 diff.isComplete = true;
@@ -1157,7 +1157,7 @@
             }
         },*/
 
-        /*_reindexParentVNode: function(parentVNode, diffIndexBySourceUid, options, notest) {
+        _reindexParentVNode: function(parentVNode, diffIndexBySourceUid, options, notest) {
             console.log("reindexing")
              // TO OVERCOME A MILD LOGIC ERROR IF NEED BE:
                   // At this point a node can be a lot further forward than it should
@@ -1197,7 +1197,7 @@
 
                 this._relocateNode(childDiff, childNode, parentVNode, options);
                 //start again from affected nodes
-                r = childDiff.destinationIndex-2;
+                r = childDiff.destinationIndex-1;
             }
 
             //TO TEST THE ABOVE CODE WAS SUCCESSFULL
@@ -1209,7 +1209,7 @@
             if (reIndexOnly) {
                 console.log("reindexed", diffIndexBySourceUid[parentVNode.uid]);
             }
-        },*/
+        },
 
         _changeRemove: function _changeRemove(diff, vNode, bySourceUid, diffIndexBySourceUid, options) {
             var parentVNode = bySourceUid[diff.sourceParentUid];
@@ -1592,10 +1592,12 @@
 
         //replace the children of one node with the children of another
         nodeReplaceChildren: function nodeReplaceChildren(DOMNode, withNode) {
-            DOMNode.innerHTML = "";
-            for (var n = 0, nl = withNode.childNodes.length; n < nl; n++) {
-                DOMNode.appendChild(withNode.childNodes[0]);
-            } 
+            try {
+                DOMNode.innerHTML = "";
+                for (var n = 0, nl = withNode.childNodes.length; n < nl; n++) {
+                    DOMNode.appendChild(withNode.childNodes[0]);
+                } 
+            } catch(e) {}
         },
 
         nodesAreEqual: function nodesAreEqual(node1, node2, options) {

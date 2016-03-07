@@ -1,7 +1,13 @@
 var diffed = $("#diffed")[0];
 var template = $("#template")[0];
 
-var dd = new DOMDiffer(); 
+var dd = new DOMDiffer({
+    ignoreAttributes: [
+        "height",
+        "width",
+        "complete"
+    ]
+}); 
 var UnitTemplate;
 
 Handlebars.registerHelper("if_equals", function(value, text, block) {
