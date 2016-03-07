@@ -65,6 +65,14 @@
 
             this._ignoreAttributes = new RegExp(regex, "i");
 
+            this._ignoreClass = {};
+
+            if (this.options.ignoreClasses) {
+                var ignoreClasses = this.options.ignoreClasses;
+                for (var i = 0, l = ignoreClasses.length; i < l; i++) {
+                    this._ignoreClass[ignoreClasses[i]] = true;
+                }
+            }
 
         },
 
@@ -212,19 +220,7 @@
                     className = classes[c];
                     if (!className) continue;
 
-                    if (this.options.ignoreClasses) {
-                        var ignoreClasses = this.options.ignoreClasses;
-                        var ignoreClass;
-                        var forbiddenClass = false;
-                        for (var i = 0, l = ignoreClasses.length; i < l; i++) {
-                            ignoreClass = ignoreClasses[i];
-                            if (ignoreClass === className) {
-                                forbiddenClass = true;
-                                break;
-                            }
-                        }
-                        if (forbiddenClass) continue;
-                    }
+                    if (this._ignoreClass[className]) continue;
 
                     vNodeClasses[className] = true;
                 }
@@ -333,7 +329,9 @@
             fVDestination2 = undefined;
 
             var destinationStartVNode = this._fVNodeToVNode(fVDestination);
-            var orderedMatches = this._rebuildDestinationFromSourceMatches(destinationStartVNode, sourceMatches, uidIndexes);
+
+            var orderedMatches = [];
+            this._rebuildDestinationFromSourceMatches(orderedMatches, destinationStartVNode, sourceMatches, uidIndexes);
 
             if (options.ignoreContainer && orderedMatches[0] && orderedMatches[0].sourceParentUid === -1) {
                 //remove container from diff
@@ -490,7 +488,7 @@
         }, 
 
         //create a percentage difference value for two vnodes
-        _rateCompare: function _rateCompare(vdestination, vsource, options) {
+        _rateCompare: function _rateCompare(vdestination, vsource) {
             var value = 0;
             if (vdestination.nodeType !== vsource.nodeType) return -1;
             if (vsource.nodeName !== vdestination.nodeName) return -1;
@@ -826,8 +824,7 @@
             for (var k in source) {
                 nodeValue = destination[k];
 
-                exists = (nodeValue !== undefined);
-                if (!exists) {
+                if (nodeValue === undefined) {
                     diff.removed.push(k);
                     continue;
                 } 
@@ -841,10 +838,8 @@
             var destKeys = [];
             for (var k in destination) {
                 destKeys.push(k);
-                exists = (source[k] !== undefined);
-                if (!exists) {
-                    nodeValue = destination[k];
-                    diff.added[k] = nodeValue;
+                if (source[k] === undefined) {
+                    diff.added[k] = destination[k];
                     diff.addedLength++;
                 }
             }
@@ -868,23 +863,19 @@
             for (var k in source) {
                 nodeValue = destination[k];
 
-                exists = (nodeValue !== undefined);
-                if (!exists) {
+                if (nodeValue === undefined) {
                     diff.removed.push(k);
                     continue;
                 } 
 
-                value = source[k];
-                if (value !== nodeValue) {
+                if (source[k] !== nodeValue) {
                     diff.added[k] = nodeValue;
                     diff.addedLength++;
                 }
             }
             for (var k in destination) {
-                exists = (source[k] !== undefined);
-                if (!exists) {
-                    nodeValue = destination[k];
-                    diff.added[k] = nodeValue;
+                if (source[k] === undefined) {
+                    diff.added[k] = destination[k];
                     diff.addedLength++;
                 }
             }
@@ -909,11 +900,9 @@
 
         //recursively go through the destination tree, checking each source mapped node (or added node) and outputing the match-diffs where necessary
         //this filters and orders the match-diffs creating a preliminary differential
-        _rebuildDestinationFromSourceMatches: function _rebuildDestinationFromSourceMatches(destinationStartVNode, sourceMatches, uidIndexes, destinationParentVNode, newIndex) {
+        _rebuildDestinationFromSourceMatches: function _rebuildDestinationFromSourceMatches(diffs, destinationStartVNode, sourceMatches, uidIndexes, destinationParentVNode, newIndex) {
 
-            var diffs = [];
             var diff = uidIndexes.byDestinationUid[destinationStartVNode.uid];
-
             var isNotRootNode = (diff.sourceParentUid !== -1);
 
             if (isNotRootNode) {
@@ -975,8 +964,7 @@
                 var childDiffs;
                 for (var i = 0, l = destinationStartVNode.childNodes.length; i < l; i++) {
                     childNode = destinationStartVNode.childNodes[i];
-                    childDiffs = this._rebuildDestinationFromSourceMatches(childNode, sourceMatches, uidIndexes, destinationStartVNode, i);
-                    diffs = diffs.concat(childDiffs);
+                    this._rebuildDestinationFromSourceMatches(diffs, childNode, sourceMatches, uidIndexes, destinationStartVNode, i);
                 }
 
                 break;
@@ -993,8 +981,6 @@
                 }
                 break;
             }
-
-            return diffs;
 
         },
 
@@ -1449,15 +1435,10 @@
         //replace the children of one node with the children of another
         nodeReplaceChildren: function nodeReplaceChildren(DOMNode, withNode) {
             if (!withNode.childNodes.length) return;
-            try {
-                DOMNode.innerHTML = "";
-            } catch(e) {
-                debugger;
-            }
+            DOMNode.innerHTML = "";
             for (var n = 0, nl = withNode.childNodes.length; n < nl; n++) {
                 DOMNode.appendChild(withNode.childNodes[0]);
             } 
-            
         },
 
         nodesAreEqual: function nodesAreEqual(node1, node2, options) {
@@ -1545,8 +1526,6 @@
 
             var vNode1 = this.nodeToVNode(DOMNode1);
             var vNode2 = this.nodeToVNode(DOMNode2);
-
-            if (vNode2 === undefined) debugger;
 
             if (options.test) {
                 this.vNodeCheckIndexes(vNode1);
