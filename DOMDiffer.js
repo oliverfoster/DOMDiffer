@@ -18,7 +18,8 @@
 
     var trim_regex = /^\s+|\s+$/g;
     var svgNS = "http://www.w3.org/2000/svg";
-
+    //var void_regex = /^(AREA|BASE|BR|COL|COMMAND|EMBED|HR|IMG|INPUT|KEYGEN|LINK|META|PARAM|SOURCE|TR‌​ACK|WBR)$/;
+    
     var proto = {
 
         setOptions: function setOptions(options) {
@@ -166,6 +167,7 @@
                 DOMNode: DOMNode,
                 nodeType: DOMNode.nodeType,
                 nodeName: DOMNode.nodeName,
+                //isVoid: void_regex.test(DOMNode.nodeName),
                 attributes: {},
                 id: "",
                 classes: {},
@@ -467,7 +469,7 @@
                             maxRated = undefined;
                             maxRatedIndex = undefined;
                             sIndex = -1;
-                            sourceTop--;
+                            //sourceTop--;
                             break;
                         }
                     }
@@ -477,6 +479,7 @@
                 if (maxRated && maxRating >= minRate) {
                     fVSource[sIndex] = undefined;
                     fVDestination[maxRatedIndex] = undefined;
+                    //if (source.nodeName === "BR" && source.nodeName !== maxRated.nodeName) debugger;
                     diffObj = {
                         source: source,
                         destination: maxRated,
@@ -498,9 +501,10 @@
                     maxRated = undefined;
                     maxRatedIndex = undefined;
                     sIndex = -1;
-                    sourceTop--;
+                    //sourceTop--;
                 }
             }
+
 
         }, 
 
@@ -508,6 +512,8 @@
         _rateCompare: function _rateCompare(vdestination, vsource, options) {
             var value = 0;
             if (vdestination.nodeType !== vsource.nodeType) return -1;
+            //if (vsource.isVoid !== vdestination.isVoid) return -1;
+            if (vsource.nodeName !== vdestination.nodeName) return -1;
 
             var rate = -1;
             switch (vdestination.nodeType) {
@@ -523,12 +529,12 @@
                 value+=(vsource.childNodes.length) === (vdestination.childNodes.length)? 2 : 0;
                 value+=vsource.childNodes.length === vdestination.childNodes.length? 2 : 0;
 
-                value+=vsource.nodeName === vdestination.nodeName?1:0;
+                //value+=vsource.nodeName === vdestination.nodeName?1:0;
                 
                 value+=vsource.deep === vdestination.deep? 1 : 0;
                 value+=vsource.index === vdestination.index? 1 : 0;
 
-                rate = (value / 18);
+                rate = (value / 17);
 
                 break;
             case 3:
@@ -799,11 +805,11 @@
 
             switch(match.nodeType) {
             case 1:
-                if (source.nodeName !== destination.nodeName) {
+                /*if (source.nodeName !== destination.nodeName) {
                     match.changeNodeName = true;
                     match.nodeName = destination.nodeName;
                     match.isEqual = false;
-                }
+                }*/
                 var changeAttributes = this._diffKeyValues(source.attributes, destination.attributes);
                 if (!changeAttributes.isEqual) {
                     match.changeAttributes = true;
@@ -989,7 +995,7 @@
                 if (!diff.isEqual
                     || diff.changeAdd
                     || diff.changeId
-                    || diff.changeNodeName
+                    //|| diff.changeNodeName
                     || diff.changeAttributes
                     || diff.changeClasses
                     || diff.changeParent
@@ -1001,7 +1007,7 @@
                     diffs.push(diff);
                 }
 
-                var haveChildrenChanged = diff.changeChildren;
+                //var haveChildrenChanged = diff.changeChildren;
 
                 var childNode;
                 var childDiffs;
@@ -1011,7 +1017,7 @@
                     diffs = diffs.concat(childDiffs);
                 }
 
-                if (haveChildrenChanged === undefined && diff.changeChildren === true) {
+               /* if (haveChildrenChanged === undefined && diff.changeChildren === true) {
                     if (diff.isIncluded === undefined) {
                         diff.retrospectiveChildrenAdd = true;
                         diff.isIncluded = true;
@@ -1027,7 +1033,7 @@
                             diffs = diffs.concat(childDiff);
                         }
                     }
-                }
+                }*/
 
                 break;
             case 3:
@@ -1111,9 +1117,9 @@
                 }
 
                 //change nodeName
-                if (diff.changeNodeName) {
+                /*if (diff.changeNodeName) {
                     this._changeNodeName(diff, vNode, bySourceUid, options);                    
-                }
+                }*/
 
                 if (diff.changeParent) {
                     this._changeParent(diff, vNode, bySourceUid, diffIndexBySourceUid, options);
@@ -1128,9 +1134,9 @@
                     this._changeData(diff, vNode, options);                    
                 }
 
-                if (diff.changeChildren === true) {
-                    this._reindexParentVNode(vNode, diffIndexBySourceUid, options);
-                }
+                /*if (diff.changeChildren === true) {
+                    //this._reindexParentVNode(vNode, diffIndexBySourceUid, options);
+                }*/
 
                 diff.isComplete = true;
             }
@@ -1157,7 +1163,7 @@
             }
         },*/
 
-        _reindexParentVNode: function(parentVNode, diffIndexBySourceUid, options, notest) {
+        /*_reindexParentVNode: function(parentVNode, diffIndexBySourceUid, options, notest) {
             console.log("reindexing")
              // TO OVERCOME A MILD LOGIC ERROR IF NEED BE:
                   // At this point a node can be a lot further forward than it should
@@ -1209,7 +1215,7 @@
             if (reIndexOnly) {
                 console.log("reindexed", diffIndexBySourceUid[parentVNode.uid]);
             }
-        },
+        },*/
 
         _changeRemove: function _changeRemove(diff, vNode, bySourceUid, diffIndexBySourceUid, options) {
             var parentVNode = bySourceUid[diff.sourceParentUid];
@@ -1326,7 +1332,7 @@
             }
         },
 
-        _changeNodeName: function _changeNodeName(diff, vNode, bySourceUid, options) {
+        /*_changeNodeName: function _changeNodeName(diff, vNode, bySourceUid, options) {
             if (options.performOnDOM) {
                 //create a new node, add the attributes
                 var parentNode = bySourceUid[diff.sourceParentUid].DOMNode;
@@ -1338,7 +1344,7 @@
 
                 //move all the children from old node to new node
                 this.nodeReplaceChildren(newNode, vNode.DOMNode);
-
+                
                 //replace diff node and dom node so that subsequent children have the right location
                 parentNode.replaceChild(newNode, vNode.DOMNode);
 
@@ -1346,7 +1352,7 @@
             }
 
             vNode.nodeName = diff.nodeName;
-        },
+        },*/
 
         _changeParent: function _changeParent(diff, vNode, bySourceUid, diffIndexBySourceUid, options) {
             var oldParentVNode = bySourceUid[diff.sourceParentUid];
@@ -1360,6 +1366,10 @@
 
                     if (options.performOnDOM) {
                         moveNode = oldParentVNode.DOMNode.childNodes[r];
+                        if (moveNode === undefined) {
+                            found = false;
+                            break;
+                        }
                     }
 
                     oldParentVNode.childNodes.splice(r, 1);
@@ -1406,7 +1416,7 @@
             if (diff.destinationIndex === vNode.index) {
                 if (!diff.changeAttributes 
                     && !diff.changeClass 
-                    && !diff.changeNodeName 
+                    //&& !diff.changeNodeName 
                     && !diff.changeData 
                     && !diff.changeParent 
                     && !diff.changeAdd  
@@ -1592,12 +1602,16 @@
 
         //replace the children of one node with the children of another
         nodeReplaceChildren: function nodeReplaceChildren(DOMNode, withNode) {
+            if (!withNode.childNodes.length) return;
             try {
                 DOMNode.innerHTML = "";
-                for (var n = 0, nl = withNode.childNodes.length; n < nl; n++) {
-                    DOMNode.appendChild(withNode.childNodes[0]);
-                } 
-            } catch(e) {}
+            } catch(e) {
+                debugger;
+            }
+            for (var n = 0, nl = withNode.childNodes.length; n < nl; n++) {
+                DOMNode.appendChild(withNode.childNodes[0]);
+            } 
+            
         },
 
         nodesAreEqual: function nodesAreEqual(node1, node2, options) {
@@ -1685,6 +1699,8 @@
 
             var vNode1 = this.nodeToVNode(DOMNode1);
             var vNode2 = this.nodeToVNode(DOMNode2);
+
+            if (vNode2 === undefined) debugger;
 
             if (options.test) {
                 this.vNodeCheckIndexes(vNode1);
