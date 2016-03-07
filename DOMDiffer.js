@@ -423,7 +423,11 @@
                     if (!destination) continue;
                     destinationUid = destination.uid;
 
+                    if (destination.nodeType !== source.nodeType) continue;
+                    if (source.nodeName !== destination.nodeName) continue;
+
                     rate = this._rateCompare(destination, source);
+
                     if (rate < minRate || rate <= maxRating) continue;
 
                     maxRated = destination;
@@ -471,7 +475,7 @@
                     destinationUid: maxRated.uid,
                     destinationParentUid: maxRated.parentUid,
                     destinationIndex: maxRated.index,
-                    isEqual: rate === 1,
+                    isEqual: false,
                     rate: maxRating
                 };
                 this._expandDifferences(diffObj, options);
@@ -489,8 +493,6 @@
         //create a percentage difference value for two vnodes
         _rateCompare: function _rateCompare(vdestination, vsource) {
             var value = 0;
-            if (vdestination.nodeType !== vsource.nodeType) return -1;
-            if (vsource.nodeName !== vdestination.nodeName) return -1;
 
             var rate = -1;
             switch (vdestination.nodeType) {
