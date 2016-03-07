@@ -18,13 +18,13 @@
 
     var trim_regex = /^\s+|\s+$/g;
     var svgNS = "http://www.w3.org/2000/svg";
-    //var void_regex = /^(AREA|BASE|BR|COL|COMMAND|EMBED|HR|IMG|INPUT|KEYGEN|LINK|META|PARAM|SOURCE|TR‌​ACK|WBR)$/;
-    
+
     var proto = {
 
         setOptions: function setOptions(options) {
 
             this.options = options || {};
+            this._hasClassList = (document.createElement("_")['classList'] !==undefined);
 
             var ignoreAttributesWithPrefix = this.options.ignoreAttributesWithPrefix;
             var ignoreAttributes = this.options.ignoreAttributes;
@@ -167,7 +167,6 @@
                 DOMNode: DOMNode,
                 nodeType: DOMNode.nodeType,
                 nodeName: DOMNode.nodeName,
-                //isVoid: void_regex.test(DOMNode.nodeName),
                 attributes: {},
                 id: "",
                 classes: {},
@@ -190,14 +189,16 @@
             var attribute;
             var attributeName;
             var attributeValue;
-            var allowedAttribute;
+            var forbiddenAttribute;
             for (var i = 0, l = nodeAttributes.length; i < l; i++) {
                 attribute = nodeAttributes.item(i);
                 attributeName = attribute.name;
                 attributeValue = attribute.value;
 
-                allowedAttribute = this._isAllowedAttribute(attributeName);
-                if (!allowedAttribute) continue;
+                if (this._ignoreAttributes) {
+                    forbiddenAttribute = this._ignoreAttributes.test(attributeName);
+                    if (forbiddenAttribute) continue;
+                }
 
                 vNodeAttributes[attributeName] = attributeValue;
             }
@@ -210,8 +211,21 @@
                 for (var c = 0, cl = classes.length; c < cl; c++) {
                     className = classes[c];
                     if (!className) continue;
-                    allowedClass = this._isAllowedClass(className);
-                    if (!allowedClass) continue;
+
+                    if (this.options.ignoreClasses) {
+                        var ignoreClasses = this.options.ignoreClasses;
+                        var ignoreClass;
+                        var forbiddenClass = false;
+                        for (var i = 0, l = ignoreClasses.length; i < l; i++) {
+                            ignoreClass = ignoreClasses[i];
+                            if (ignoreClass === className) {
+                                forbiddenClass = true;
+                                break;
+                            }
+                        }
+                        if (forbiddenClass) continue;
+                    }
+
                     vNodeClasses[className] = true;
                 }
             }
@@ -223,36 +237,6 @@
 
             delete vNodeAttributes['class'];
             delete vNodeAttributes.id;
-        },
-
-        _isAllowedAttribute: function _isAllowedAttribute(attribute) {
-
-            var _ignoreAttributes = this._ignoreAttributes;
-            if (!_ignoreAttributes) return true;
-
-            //ignore matching attribute names
-            var isMatched = _ignoreAttributes.test(attribute);
-
-            return !isMatched;
-
-        },
-
-        _isAllowedClass: function _isAllowedClass(className) {
-
-            var ignoreClasses = this.options.ignoreClasses;
-            if (!ignoreClasses || !ignoreClasses.length) return true;
-
-            //ignore matching classes
-            var ignoreClass;
-            for (var i = 0, l = ignoreClasses.length; i < l; i++) {
-                ignoreClass = ignoreClasses[i];
-                if (ignoreClass === className) {
-                    return false;
-                }
-            }
-
-            return true;
-
         },
 
         _injectSpecialAttributes: function _injectSpecialAttributes(DOMNode, vNode) {
@@ -418,93 +402,90 @@
 
             //match each source piece to the best destination piece
             //this way the fewest source moves will be made
-            var sourceTop = fVSource.length;
+            var sourceLength = fVSource.length;
             var source;
             var sourceUid;
+            var destinationLength = fVDestination.length;
             var destination;
             var destinationUid;
             var diffObj;
-            var rated;
             var rate;
-            for (var sIndex = 0; sIndex < sourceTop; sIndex++) {
+
+            var bySourceUid = uidIndexes.bySourceUid;
+            var byDestinationUid = uidIndexes.byDestinationUid;
+
+            for (var sIndex = 0; sIndex < sourceLength; sIndex++) {
 
                 source = fVSource[sIndex];
                 if (!source) continue;
                 sourceUid = source.uid;
 
-                rated = [];
-                for (var dIndex = 0, dLength = fVDestination.length; dIndex < dLength; dIndex++) {
+                for (var dIndex = 0; dIndex < destinationLength; dIndex++) {
 
                     destination = fVDestination[dIndex];
                     if (!destination) continue;
                     destinationUid = destination.uid;
 
                     rate = this._rateCompare(destination, source);
-                    if (rate > maxRating && rate >= minRate) {
-                        rated.push(destination);
-                        maxRated = destination;
-                        maxRating = rate;
-                        maxRatedIndex = dIndex;
-                        if (rate === 1) {
-                            fVSource[sIndex] = undefined;
-                            fVDestination[dIndex] = undefined;
-                            diffObj = {
-                                source: source,
-                                destination: destination,
-                                nodeType: source.nodeType,
-                                sourceUid: sourceUid,
-                                sourceParentUid: source.parentUid,
-                                sourceIndex: source.index,
-                                destinationUid: destination.uid,
-                                destinationParentUid: destination.parentUid,
-                                destinationIndex: destination.index,
-                                isEqual: rate === 1,
-                                rate: rate
-                            };
-                            this._expandDifferences(diffObj, options);
-                            sourceMatches.push(diffObj);
-                            uidIndexes.bySourceUid[diffObj.sourceUid] = diffObj;
-                            uidIndexes.byDestinationUid[diffObj.destinationUid] = diffObj;
-                            maxRating = 0;
-                            maxRated = undefined;
-                            maxRatedIndex = undefined;
-                            sIndex = -1;
-                            //sourceTop--;
-                            break;
-                        }
-                    }
+                    if (rate < minRate || rate <= maxRating) continue;
 
-                }
+                    maxRated = destination;
+                    maxRating = rate;
+                    maxRatedIndex = dIndex;
+                    if (rate !== 1) continue;
 
-                if (maxRated && maxRating >= minRate) {
                     fVSource[sIndex] = undefined;
-                    fVDestination[maxRatedIndex] = undefined;
-                    //if (source.nodeName === "BR" && source.nodeName !== maxRated.nodeName) debugger;
+                    fVDestination[dIndex] = undefined;
                     diffObj = {
                         source: source,
-                        destination: maxRated,
+                        destination: destination,
                         nodeType: source.nodeType,
-                        sourceUid: source.uid,
+                        sourceUid: sourceUid,
                         sourceParentUid: source.parentUid,
                         sourceIndex: source.index,
-                        destinationUid: maxRated.uid,
-                        destinationParentUid: maxRated.parentUid,
-                        destinationIndex: maxRated.index,
+                        destinationUid: destination.uid,
+                        destinationParentUid: destination.parentUid,
+                        destinationIndex: destination.index,
                         isEqual: rate === 1,
-                        rate: maxRating
+                        rate: rate
                     };
                     this._expandDifferences(diffObj, options);
                     sourceMatches.push(diffObj);
-                    uidIndexes.bySourceUid[diffObj.sourceUid] = diffObj;
-                    uidIndexes.byDestinationUid[diffObj.destinationUid] = diffObj;
+                    bySourceUid[diffObj.sourceUid] = diffObj;
+                    byDestinationUid[diffObj.destinationUid] = diffObj;
                     maxRating = 0;
                     maxRated = undefined;
                     maxRatedIndex = undefined;
                     sIndex = -1;
-                    //sourceTop--;
+                    break;
                 }
-            }
 
+                if (!maxRated) continue;
+
+                fVSource[sIndex] = undefined;
+                fVDestination[maxRatedIndex] = undefined;
+                diffObj = {
+                    source: source,
+                    destination: maxRated,
+                    nodeType: source.nodeType,
+                    sourceUid: source.uid,
+                    sourceParentUid: source.parentUid,
+                    sourceIndex: source.index,
+                    destinationUid: maxRated.uid,
+                    destinationParentUid: maxRated.parentUid,
+                    destinationIndex: maxRated.index,
+                    isEqual: rate === 1,
+                    rate: maxRating
+                };
+                this._expandDifferences(diffObj, options);
+                sourceMatches.push(diffObj);
+                bySourceUid[diffObj.sourceUid] = diffObj;
+                byDestinationUid[diffObj.destinationUid] = diffObj;
+                maxRating = 0;
+                maxRated = undefined;
+                maxRatedIndex = undefined;
+                sIndex = -1;
+            }
 
         }, 
 
@@ -512,7 +493,6 @@
         _rateCompare: function _rateCompare(vdestination, vsource, options) {
             var value = 0;
             if (vdestination.nodeType !== vsource.nodeType) return -1;
-            //if (vsource.isVoid !== vdestination.isVoid) return -1;
             if (vsource.nodeName !== vdestination.nodeName) return -1;
 
             var rate = -1;
@@ -528,8 +508,6 @@
 
                 value+=(vsource.childNodes.length) === (vdestination.childNodes.length)? 2 : 0;
                 value+=vsource.childNodes.length === vdestination.childNodes.length? 2 : 0;
-
-                //value+=vsource.nodeName === vdestination.nodeName?1:0;
                 
                 value+=vsource.deep === vdestination.deep? 1 : 0;
                 value+=vsource.index === vdestination.index? 1 : 0;
@@ -554,6 +532,7 @@
         _rateCompareNoChildren: function _rateCompareNoChildren(vdestination, vsource) {
             var value = 0;
             if (vdestination.nodeType !== vsource.nodeType) return -1;
+            if (vsource.nodeName !== vdestination.nodeName) return -1;
 
             var rate = -1;
             switch (vdestination.nodeType) {
@@ -565,9 +544,7 @@
 
                 value+=this._keyValueCompare(vsource.attributes, vdestination.attributes) * 2;
 
-                value+=vsource.nodeName === vdestination.nodeName?1:0;
-
-                rate = (value / 9);
+                rate = (value / 8);
 
                 break;
             case 3:
@@ -584,6 +561,7 @@
         _rateCompareNoDepth: function _rateCompareNoDepth(vdestination, vsource) {
             var value = 0;
             if (vdestination.nodeType !== vsource.nodeType) return -1;
+            if (vsource.nodeName !== vdestination.nodeName) return -1;
 
             var rate = -1;
             switch (vdestination.nodeType) {
@@ -594,12 +572,10 @@
                 value+=this._keyValueCompare(vsource.classes, vdestination.classes) * 3;
 
                 value+=this._keyValueCompare(vsource.attributes, vdestination.attributes) * 2;
-
-                value+=vsource.nodeName === vdestination.nodeName?1:0;
                 
                 value+=vsource.index === vdestination.index? 1 : 0;
 
-                rate = (value / 10);// || -1;
+                rate = (value / 9);
 
                 break;
             case 3:
@@ -608,7 +584,7 @@
                 value+=vsource.trimmed === vdestination.trimmed? 2 : 0;
                 value+=vsource.data === vdestination.data? 1 : 0;
                 
-                rate = (value / 4);// || -1;
+                rate = (value / 4);
             }
 
             return rate;
@@ -622,8 +598,7 @@
             var o2value;
             for (var k1 in object1) {
                 totalKeys++;
-                o2value = object2[k1];
-                if (object1[k1] === o2value) {
+                if (object1[k1] === object2[k1]) {
                     matchingValues++;
                 }
             }
@@ -632,7 +607,7 @@
                     totalKeys++;
                 }
             }
-            if (!totalKeys ) return 1;
+            if (!totalKeys) return 1;
             return (matchingValues / totalKeys) || -1;
         },
 
@@ -671,8 +646,6 @@
                 }
 
             }
-
-            //fVSource2.splice(0, fVSource2.length)[0];
 
             return removes;
         },
@@ -805,11 +778,7 @@
 
             switch(match.nodeType) {
             case 1:
-                /*if (source.nodeName !== destination.nodeName) {
-                    match.changeNodeName = true;
-                    match.nodeName = destination.nodeName;
-                    match.isEqual = false;
-                }*/
+
                 var changeAttributes = this._diffKeyValues(source.attributes, destination.attributes);
                 if (!changeAttributes.isEqual) {
                     match.changeAttributes = true;
@@ -848,8 +817,6 @@
                 removed: [],
                 addedLength: 0,
                 added: {},
-                changedLength: 0,
-                changed: {},
                 isEqual: true,
                 value: "",
             };
@@ -867,8 +834,8 @@
 
                 value = source[k];
                 if (value !== nodeValue) {
-                    diff.changed[k] = nodeValue;
-                    diff.changedLength++;
+                    diff.added[k] = nodeValue;
+                    diff.addedLength++;
                 }
             }
             var destKeys = [];
@@ -881,7 +848,7 @@
                     diff.addedLength++;
                 }
             }
-            if (diff.removed.length || diff.addedLength || diff.changedLength) {
+            if (diff.removed.length || diff.addedLength) {
                 diff.isEqual = false;
                 diff.value = destKeys.join(" ");
             }
@@ -893,8 +860,6 @@
                 removed: [],
                 addedLength: 0,
                 added: {},
-                changedLength: 0,
-                changed: {},
                 isEqual: true
             };
             var nodeValue;
@@ -911,8 +876,8 @@
 
                 value = source[k];
                 if (value !== nodeValue) {
-                    diff.changed[k] = nodeValue;
-                    diff.changedLength++;
+                    diff.added[k] = nodeValue;
+                    diff.addedLength++;
                 }
             }
             for (var k in destination) {
@@ -923,7 +888,7 @@
                     diff.addedLength++;
                 }
             }
-            if (diff.removed.length || diff.addedLength || diff.changedLength) {
+            if (diff.removed.length || diff.addedLength) {
                 diff.isEqual = false;
             }
             return diff;
@@ -995,7 +960,6 @@
                 if (!diff.isEqual
                     || diff.changeAdd
                     || diff.changeId
-                    //|| diff.changeNodeName
                     || diff.changeAttributes
                     || diff.changeClasses
                     || diff.changeParent
@@ -1007,8 +971,6 @@
                     diffs.push(diff);
                 }
 
-                //var haveChildrenChanged = diff.changeChildren;
-
                 var childNode;
                 var childDiffs;
                 for (var i = 0, l = destinationStartVNode.childNodes.length; i < l; i++) {
@@ -1016,24 +978,6 @@
                     childDiffs = this._rebuildDestinationFromSourceMatches(childNode, sourceMatches, uidIndexes, destinationStartVNode, i);
                     diffs = diffs.concat(childDiffs);
                 }
-
-               /* if (haveChildrenChanged === undefined && diff.changeChildren === true) {
-                    if (diff.isIncluded === undefined) {
-                        diff.retrospectiveChildrenAdd = true;
-                        diff.isIncluded = true;
-                        diffs.push(diff);
-                    }
-                    for (var i = 0, l = destinationStartVNode.childNodes.length; i < l; i++) {
-                        var childNode = destinationStartVNode.childNodes[i];
-                        var childDiff = uidIndexes.byDestinationUid[childNode.uid];
-                        if (childDiff.isIncluded === undefined) {
-                            childDiff.isIncluded = true;
-                            childDiff.retrospectiveChildrenAdd2 = true;
-                            diff.retrospectiveChildrenAdd3 = true;
-                            diffs = diffs.concat(childDiff);
-                        }
-                    }
-                }*/
 
                 break;
             case 3:
@@ -1073,7 +1017,7 @@
                 performOnDOM: true
             };
 
-            if (!options.performOnVNode) startVNode = this._cloneObject(startVNode, {"DOMNode":true});
+            if (!options.performOnVNode) startVNode = this._cloneObjectCopy(startVNode, {"DOMNode":true});
 
             var bySourceUid = {};
             var fVStartNode = [];
@@ -1116,11 +1060,6 @@
                     this._changeClasses(diff, vNode, options);                    
                 }
 
-                //change nodeName
-                /*if (diff.changeNodeName) {
-                    this._changeNodeName(diff, vNode, bySourceUid, options);                    
-                }*/
-
                 if (diff.changeParent) {
                     this._changeParent(diff, vNode, bySourceUid, diffIndexBySourceUid, options);
                 }
@@ -1134,88 +1073,15 @@
                     this._changeData(diff, vNode, options);                    
                 }
 
-                /*if (diff.changeChildren === true) {
-                    //this._reindexParentVNode(vNode, diffIndexBySourceUid, options);
-                }*/
-
                 diff.isComplete = true;
             }
 
             //remove redundant items from the original diff
             this._removeRedundants(differential);
 
-            //this._reindexVNode(startVNode);
-
             return startVNode;
         },
 
-        /*_reindexVNode: function _reindexVNode(vNode) {
-            switch (vNode.nodeType) {
-            case 1:
-
-                for (var i = 0, l = vNode.childNodes.length; i < l; i++) {
-                    var childNode = vNode.childNodes[i];
-                    childNode.index = i;
-                    if (childNode.nodeType === 3) {
-                        this._reindexVNode(childNode);
-                    }
-                }
-            }
-        },*/
-
-        /*_reindexParentVNode: function(parentVNode, diffIndexBySourceUid, options, notest) {
-            console.log("reindexing")
-             // TO OVERCOME A MILD LOGIC ERROR IF NEED BE:
-                  // At this point a node can be a lot further forward than it should
-                  // This code is to correct for when new nodes are added in a position after 
-                  // a node that will be later removed. When the subsequent node is removed
-                  // all of the earlier add
-                
-
-            var reIndexOnly = false;
-            for (var r = 0, rl = parentVNode.childNodes.length; r < rl; r++) {
-                var childNode = parentVNode.childNodes[r];
-                //reindex vnodes as they can change around
-                childNode.index = r;
-
-                if (reIndexOnly === true) continue;
-
-                var childDiff = diffIndexBySourceUid[childNode.uid];
-
-                //check if a differential was made for this node
-                //if there was it was a node that moved or changed
-                if (childDiff === undefined) continue;
-
-                if (childDiff.changeRemove === true) {
-                    reIndexOnly = true;
-                    continue;
-                }
-
-                //compare the destinationIndex with the current index
-                if (childDiff.destinationIndex === childNode.index) continue;
-
-                if (childDiff.changeParent === true && childDiff.newSourceParentUid !== childNode.parentUid) {
-                    reIndexOnly = true;
-                    continue;
-                }
-
-                if (childDiff.destinationIndex >= parentVNode.childNodes.length) continue;
-
-                this._relocateNode(childDiff, childNode, parentVNode, options);
-                //start again from affected nodes
-                r = childDiff.destinationIndex-1;
-            }
-
-            //TO TEST THE ABOVE CODE WAS SUCCESSFULL
-            if (options.test && options.performOnDOM && notest !== true) {
-                var reVNode = this.nodeToVNode(parentVNode.DOMNode);
-                var res = this.vNodesAreEqual(parentVNode, reVNode, {ignoreDepths: true, forDebug:true});
-                if (!res) debugger;
-            }
-            if (reIndexOnly) {
-                console.log("reindexed", diffIndexBySourceUid[parentVNode.uid]);
-            }
-        },*/
 
         _changeRemove: function _changeRemove(diff, vNode, bySourceUid, diffIndexBySourceUid, options) {
             var parentVNode = bySourceUid[diff.sourceParentUid];
@@ -1240,7 +1106,7 @@
         _changeAdd: function _changeAdd(diff, vNode, bySourceUid, diffIndexBySourceUid, options) {
             var parentVNode = bySourceUid[diff.sourceParentUid];
                     
-            var newSourceVNode = this.vNodeToOuterVNode(diff.vNode, {performOnVNode:false}); //this._cloneObject(diff.vNode, {"DOMNode":true});
+            var newSourceVNode = this.vNodeToOuterVNode(diff.vNode, {performOnVNode:false});
             var newNode = this.vNodeToNode(newSourceVNode);
             newSourceVNode.DOMNode = newNode;
 
@@ -1268,16 +1134,6 @@
                     }
 
                     delete vNode.attributes[key];
-                }
-            }
-            if (attributes.changedLength) {
-                for (var k in attributes.changed) {
-
-                    if (options.performOnDOM) {
-                        vNode.DOMNode.setAttribute(k, attributes.changed[k]);
-                    }
-
-                    vNode.attributes[k] = attributes.changed[k];
                 }
             }
             if (attributes.addedLength) {
@@ -1331,28 +1187,6 @@
                 }
             }
         },
-
-        /*_changeNodeName: function _changeNodeName(diff, vNode, bySourceUid, options) {
-            if (options.performOnDOM) {
-                //create a new node, add the attributes
-                var parentNode = bySourceUid[diff.sourceParentUid].DOMNode;
-
-                var vNodeOuter = this.vNodeToOuterVNode(vNode, {performOnVNode: false});
-                vNodeOuter.nodeName = diff.nodeName;
-
-                var newNode = this.vNodeToNode(vNodeOuter);
-
-                //move all the children from old node to new node
-                this.nodeReplaceChildren(newNode, vNode.DOMNode);
-                
-                //replace diff node and dom node so that subsequent children have the right location
-                parentNode.replaceChild(newNode, vNode.DOMNode);
-
-                vNode.DOMNode = newNode;
-            }
-
-            vNode.nodeName = diff.nodeName;
-        },*/
 
         _changeParent: function _changeParent(diff, vNode, bySourceUid, diffIndexBySourceUid, options) {
             var oldParentVNode = bySourceUid[diff.sourceParentUid];
@@ -1416,7 +1250,6 @@
             if (diff.destinationIndex === vNode.index) {
                 if (!diff.changeAttributes 
                     && !diff.changeClass 
-                    //&& !diff.changeNodeName 
                     && !diff.changeData 
                     && !diff.changeParent 
                     && !diff.changeAdd  
@@ -1428,41 +1261,37 @@
                 }
             } else {
 
-                this._relocateNode(diff, vNode, parentVNode, options);
+                if (diff.destinationIndex > vNode.index) {
+                    /* insert before next, when a node is moved up a list it changes the indices of 
+                        *  all the elements above it
+                        *  it's easier to pick the node after its new position and insert before that one
+                        *  makes indices come out correctly
+                        */
+                    if (options.performOnDOM) {
+                        var moveNode = parentVNode.DOMNode.childNodes[vNode.index];
 
-            }
-
-        },
-
-        _relocateNode: function _relocateNode(diff, vNode, parentVNode, options) {
-            if (diff.destinationIndex > vNode.index) {
-                /* insert before next, when a node is moved up a list it changes the indices of 
-                    *  all the elements above it
-                    *  it's easier to pick the node after its new position and insert before that one
-                    *  makes indices come out correctly
-                    */
-                if (options.performOnDOM) {
-                    var moveNode = parentVNode.DOMNode.childNodes[vNode.index];
-
-                    var offsetIndex = diff.destinationIndex+1;
-                    if (offsetIndex >= parentVNode.DOMNode.childNodes.length) {
-                        parentVNode.DOMNode.appendChild(moveNode);
-                    } else {
-                        var afterNode = parentVNode.DOMNode.childNodes[offsetIndex];
+                        var offsetIndex = diff.destinationIndex+1;
+                        if (offsetIndex >= parentVNode.DOMNode.childNodes.length) {
+                            parentVNode.DOMNode.appendChild(moveNode);
+                        } else {
+                            var afterNode = parentVNode.DOMNode.childNodes[offsetIndex];
+                            parentVNode.DOMNode.insertBefore(moveNode, afterNode);
+                        }
+                    }
+                } else {
+                    if (options.performOnDOM) {
+                        var afterNode = parentVNode.DOMNode.childNodes[diff.destinationIndex];
+                        var moveNode = parentVNode.DOMNode.childNodes[vNode.index];
                         parentVNode.DOMNode.insertBefore(moveNode, afterNode);
                     }
                 }
-            } else {
-                if (options.performOnDOM) {
-                    var afterNode = parentVNode.DOMNode.childNodes[diff.destinationIndex];
-                    var moveNode = parentVNode.DOMNode.childNodes[vNode.index];
-                    parentVNode.DOMNode.insertBefore(moveNode, afterNode);
-                }
+
+                parentVNode.childNodes.splice(vNode.index,1);
+                parentVNode.childNodes.splice(diff.destinationIndex,0,vNode);
+                vNode.index = diff.destinationIndex;
+
             }
 
-            parentVNode.childNodes.splice(vNode.index,1);
-            parentVNode.childNodes.splice(diff.destinationIndex,0,vNode);
-            vNode.index = diff.destinationIndex;
         },
 
         _changeData: function _changeData(diff, vNode, options) {
@@ -1489,11 +1318,28 @@
         },
 
         //clone basic javascript Array, Object and primative structures
-        _cloneObject: function _cloneObject(value, copy) {
+        _cloneObject: function _cloneObject(value) {
             if (value instanceof Array) {
                 var rtn = [];
                 for (var i = 0, l = value.length; i < l; i++) {
-                    rtn[i] = this._cloneObject(value[i], copy);
+                    rtn[i] = this._cloneObject(value[i]);
+                }
+                return rtn;
+            } else if (value instanceof Object) {
+                var rtn = {};
+                for (var k in value) {
+                    rtn[k] = this._cloneObject(value[k]);
+                }
+                return rtn;
+            }
+            return value;
+        },
+
+        _cloneObjectCopy: function _cloneObjectCopy(value, copy) {
+            if (value instanceof Array) {
+                var rtn = [];
+                for (var i = 0, l = value.length; i < l; i++) {
+                    rtn[i] = this._cloneObjectCopy(value[i], copy);
                 }
                 return rtn;
             } else if (value instanceof Object) {
@@ -1502,7 +1348,7 @@
                     if (copy && copy[k] !== undefined) {
                         rtn[k] = value[k]
                     } else {
-                        rtn[k] = this._cloneObject(value[k], copy);
+                        rtn[k] = this._cloneObjectCopy(value[k], copy);
                     }
                 }
                 return rtn;
