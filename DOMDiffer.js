@@ -211,14 +211,15 @@
                     if (!allowedClass) continue;
                     vNodeClasses[className] = true;
                 }
-                delete vNodeAttributes['class'];
             }
 
             var idValue = vNodeAttributes.id;
             if (idValue) {
                 vNode.id = idValue;
-                delete vNodeAttributes.id;
             }
+
+            delete vNodeAttributes['class'];
+            delete vNodeAttributes.id;
         },
 
         _isAllowedAttribute: function _isAllowedAttribute(attribute) {

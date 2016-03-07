@@ -61,6 +61,13 @@ function startTesting() {
         bindTestContext("In sequence",i, runOverall);
 
     }
+    
+    for (var i = changes.length-1, l = -1; i > l; i--) {
+
+        runOverall+=testDelay;
+        bindTestContext("In sequence backward",i, runOverall);
+
+    }
 
     for (var c = 0, cl = 100; c < cl; c++) {
 
