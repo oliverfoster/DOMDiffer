@@ -23,8 +23,7 @@
 
         setOptions: function setOptions(options) {
 
-            this.options = options || {};
-            this._hasClassList = (document.createElement("_")['classList'] !==undefined);
+            this.options = options || {};;
 
             var ignoreAttributesWithPrefix = this.options.ignoreAttributesWithPrefix;
             var ignoreAttributes = this.options.ignoreAttributes;
@@ -816,11 +815,9 @@
                 addedLength: 0,
                 added: {},
                 isEqual: true,
-                value: "",
+                value: ""
             };
             var nodeValue;
-            var exists;
-            var value;
             for (var k in source) {
                 nodeValue = destination[k];
 
@@ -829,8 +826,7 @@
                     continue;
                 } 
 
-                value = source[k];
-                if (value !== nodeValue) {
+                if (source[k] !== nodeValue) {
                     diff.added[k] = nodeValue;
                     diff.addedLength++;
                 }
@@ -858,8 +854,6 @@
                 isEqual: true
             };
             var nodeValue;
-            var exists;
-            var value;
             for (var k in source) {
                 nodeValue = destination[k];
 
@@ -1160,11 +1154,6 @@
                 for (var r = 0, rl = classes.removed.length; r < rl; r++) {
                     var key = classes.removed[r];
                     delete vNode.classes[key];
-                }
-            }
-            if (classes.changedLength !== 0) {
-                for (var k in classes.changed) {
-                    vNode.classes[k] = classes.changed[k];
                 }
             }
             if (classes.addedLength !== 0) {
